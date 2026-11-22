@@ -1,126 +1,144 @@
-# Clargen Health Identity
+# Clargen Health Identity — Sprint 1 demo
 
-Server-side, independent Clargen Health ID issuance, Patient lookup and Patient
-profile management for one Medplum development project.
+This package contains an independent identity sandbox built on Medplum and
+FHIR R4. It is not an ABHA issuer, an ABDM integration, or a production
+health-record system.
 
-This Sprint 1 package provides identity primitives, an authenticated HTTP API
-factory and the Medplum adapter. It does not contain patient signup/login,
-provider-facing record querying, a UI, external identity integration, or real
-patient data.
+## What Sprint 1 demonstrates
 
-## HTTP API
+- A unique `CLH-...` Clargen Health ID stored as a FHIR Patient identifier.
+- A constrained Clargen Patient StructureDefinition.
+- Server-side issuance using a dedicated Medplum ClientApplication.
+- Patient lookup by identifier system and value.
+- Version-aware Patient profile updates.
+- A restricted issuer policy and a derived Patient membership policy that
+  retains the project's default Patient compartment permissions while making
+  `Patient.identifier` read-only.
+- An authenticated HTTP API factory with caller-scoped read/update services.
 
-The package exports `createIdentityHttpServer()`, a Node.js HTTP server
-factory. It uses dependency injection so the host application must supply
-authentication and caller-scoped Medplum services; it deliberately does not
-create an unauthenticated shortcut or reuse the privileged issuer credential
-for patient reads and updates.
+Patient signup/login, OTP, provider directories, provider search, record sharing,
+and official ABDM integrations are not Sprint 1 deliverables.
 
-| Method | Route | Purpose |
-|---|---|---|
-| GET | `/health` | Liveness response |
-| POST | `/api/v1/patients` | Issue a Clargen Health ID and create a Patient |
-| GET | `/api/v1/patients/health-id/:healthId` | Find a Patient through the authenticated caller's permissions |
-| GET | `/api/v1/patients/:patientId/profile` | Read a Patient through the authenticated caller's permissions |
-| PATCH | `/api/v1/patients/:patientId/profile` | Update permitted profile fields with an expected version |
+## 1. Start local Medplum
 
-All `/api/v1/*` routes require the host's `authenticate` dependency to
-validate the incoming session or bearer token and return a request context.
-The context's lookup, read and profile services must be constructed using the
-authenticated caller's Medplum permissions. Set `canIssue` only for actors
-authorized by the host application to issue identities. The API rejects
-unauthenticated requests and callers without issuance permission.
+Start the local Medplum stack. The expected local endpoints are:
 
-The server factory is intended to be mounted by a trusted backend host. The
-actual authentication adapter and executable deployment entrypoint are not
-included in Sprint 1 because patient login/session implementation belongs to
-Sprint 2. Do not expose issuer credentials or privileged Medplum clients to a
-browser.
+- App: `http://localhost:3000`
+- API: `http://localhost:8103`
 
-## FHIR profile
+Use the **Clargen Health Development** project and synthetic records only.
 
-Build the profile from
-`backend/identity/fhir/input/fsh/ClargenPatient.fsh`:
+## 2. Install the FHIR profile and policies
 
-```bash
-npm run fhir:build
-```
-
-The generated StructureDefinition is:
-`backend/identity/fhir/fsh-generated/resources/StructureDefinition-clargen-patient.json`
-
-Its canonical URL is
-`https://clargen.health/fhir/StructureDefinition/clargen-patient`.
-
-## Provision the Medplum project
-
-The package exports `provisionIdentityResources(adminClient, patientProfile)`.
-The deployment command `npm run provision:medplum` builds the package and
-calls this function using a MedplumClient initialized with the short-lived
-administrator access token from the environment. Resource validation and
-upsert behavior live only in this TypeScript function; the script is a thin
-deployment wrapper.
-
-The function idempotently creates or updates the StructureDefinition and both
-Sprint 1 AccessPolicies. It stops if duplicate canonical URLs or policy names
-are found. Do not use the restricted issuer client for provisioning.
-
-The issuer policy grants only Patient `create`, `search` and `read`.
-The identifier immutability policy is a separate policy and must be composed
-with the normal patient-compartment policy on each Patient membership.
-
-See [scripts/README.md](scripts/README.md) for the deployment procedure.
-
-## Create the issuer ClientApplication
-
-Create the dedicated application in the Medplum App as a project administrator:
-
-1. Open **Client Applications** in the Clargen Health Development project.
-2. Create a dedicated application named `Clargen Identity Issuer`.
-3. Attach the `Clargen Identity Issuer` AccessPolicy to its
-   `ProjectMembership`.
-4. Store the ClientApplication ID and secret in the trusted backend's local
-   secret store. Never commit them or expose them to a browser.
-
-The credential must not have Patient update or delete authority. The
-`connectIdentityIssuer()` factory creates a server-side Medplum client from
-the base URL, client ID and secret.
-
-## Identity model
-
-- `Patient.id` is the Medplum FHIR resource ID.
-- `Patient.identifier` with system
-  `https://clargen.health/fhir/identifier/health-id` is the Clargen Health ID.
-- The Clargen Health ID is a lookup identifier, not an authentication secret.
-- Medplum `User` is a separate authentication identity; signup and login are
-  outside Sprint 1.
-- `MedplumPatientIdentityLookup` requires a caller-scoped client. It does not
-  bypass Medplum access control.
-- Profile updates must use a client scoped to the authenticated caller, not
-  the privileged issuer credential.
-
-## Local commands
+From the repository root:
 
 ```bash
 npm install
+npm run fhir:build
+export CLARGEN_MEDPLUM_BASE_URL=http://localhost:8103
+read -rsp "Medplum admin access token: " CLARGEN_MEDPLUM_ACCESS_TOKEN
+export CLARGEN_MEDPLUM_ACCESS_TOKEN
+printf '\\n'
+npm run provision:medplum
+```
+
+This installs or updates the Clargen Patient StructureDefinition, the
+restricted issuer AccessPolicy, and the Patient identifier immutability
+AccessPolicy. The token is read from the shell and is not written to a file.
+
+## 3. Create the issuer ClientApplication
+
+In the Medplum App, as a project administrator:
+
+1. Open the **Clargen Health Development** project.
+2. Open **Client Applications** and create `Clargen Identity Issuer`.
+3. Attach the `Clargen Identity Issuer` AccessPolicy to its membership.
+4. Confirm the application belongs to this development project.
+5. Copy its client ID and secret directly into your local secret manager or
+   untracked environment. Never put them in Git or browser code.
+
+The policy grants Patient create, search and read only. It does not grant
+Patient update or delete. The Health ID is an identifier, not a login secret.
+
+## 4. Configure Patient membership protection
+
+Patient issuance creates the FHIR Patient resource. It does not automatically
+create a Medplum User or ProjectMembership; account registration is Sprint 2.
+
+For a demo of membership-level identifier protection, create or invite a
+synthetic Patient membership in Medplum, then configure its policy using the
+Patient resource ID:
+
+```bash
+npm run configure:patient-access -- <patient-resource-id>
+```
+
+This command derives a project-specific AccessPolicy using both the
+membership's existing/default Patient compartment policy and the provisioned
+`Clargen Patient Identifier Immutability` policy via `AccessPolicy.basedOn`.
+It updates the membership to reference the derived policy. It stops if the
+membership is missing/ambiguous or no base Patient policy is configured.
+This preserves the normal Patient compartment restrictions.
+
+## 5. Run the identity integration test
+
+Set the dedicated issuer credentials in the current shell:
+
+```bash
+export CLARGEN_IDENTITY_ISSUER_CLIENT_ID=...
+read -rsp "Issuer client secret: " CLARGEN_IDENTITY_ISSUER_CLIENT_SECRET
+export CLARGEN_IDENTITY_ISSUER_CLIENT_SECRET
+printf '\\n'
+npm run test:integration --workspace @clargen/identity
+```
+
+The opt-in integration test creates a synthetic Patient, confirms the Health ID
+identifier and looks it up. It does not use real patient information.
+
+## 6. HTTP API demo
+
+The package exports `createIdentityHttpServer()`. It is a server factory, not
+a standalone server or an authentication provider. A trusted host must inject:
+
+- an `authenticate(request)` function that validates a session/bearer token;
+- an issuer service backed by the restricted issuer ClientApplication; and
+- lookup, profile and read services backed by the authenticated caller's
+  Medplum permissions.
+
+Never use the administrator token as the API bearer token. Never use the
+restricted issuer client for patient reads or profile updates. Import the
+Postman collection at
+`postman/Clargen-Health-Identity-Sprint-1.postman_collection.json`, then set
+`baseUrl` and `accessToken` after deploying a trusted host.
+
+| Method | Route | Purpose |
+|---|---|---|
+| GET | `/health` | Liveness |
+| POST | `/api/v1/patients` | Issue identity (issuer-authorized actor only) |
+| GET | `/api/v1/patients/health-id/:healthId` | Caller-authorized Health ID lookup |
+| GET | `/api/v1/patients/:patientId/profile` | Caller-authorized Patient read |
+| PATCH | `/api/v1/patients/:patientId/profile` | Caller-authorized, version-aware profile update |
+
+## 7. End-of-sprint validation
+
+Run from the repository root:
+
+```bash
 npm run build
 npm run typecheck
 npm test
 npm run fhir:build
-```
-
-The opt-in integration test creates synthetic Patient records only. It requires
-the dedicated issuer ClientApplication credentials and a development project:
-
-```bash
-export CLARGEN_MEDPLUM_BASE_URL=http://localhost:8103
-export CLARGEN_IDENTITY_ISSUER_CLIENT_ID=...
-export CLARGEN_IDENTITY_ISSUER_CLIENT_SECRET=...
 npm run test:integration --workspace @clargen/identity
 ```
 
-## Security boundary
+The integration test is opt-in and needs a local Medplum server plus the
+dedicated issuer ClientApplication credentials. Use only synthetic data.
 
-Construct `MedplumIdentityFhirClient` only in a trusted Clargen server
-process. Never send a ClientApplication secret, access token, or privileged
-client to a browser.
+## Security and limitations
+
+- Independent Clargen Health identifiers are not ABHA numbers.
+- No connection to official ABDM production or sandbox services is implemented.
+- No real patient data should be entered.
+- API authentication is injected by the host and is not yet a login/OTP system.
+- The Postman collection is an API contract/demo aid; it does not replace a
+  deployed host or authentication adapter.
