@@ -45,7 +45,7 @@ export function createIdentityServer({ database = openDatabase() } = {}) {
       const isDiscoverabilityRoute = request.method === 'PATCH' && url.pathname === '/api/v1/me/discoverability';
       const isDirectorySearchRoute = request.method === 'GET' && url.pathname === '/api/v1/individuals/search';
       const healthIdMatch = request.method === 'GET'
-        ? url.pathname.match(/^\\/api\\/v1\\/individuals\\/health-id\\/([^/]+)$/)
+        ? url.pathname.match(/^\/api\/v1\/individuals\/health-id\/([^/]+)$/)
         : null;
       const isSignoutRoute = request.method === 'POST' && url.pathname === '/api/v1/signout';
 
@@ -150,7 +150,7 @@ async function readJsonRequest(request) {
 function readIntegerQuery(searchParams, key, defaultValue) {
   const values = searchParams.getAll(key);
   if (values.length === 0) return defaultValue;
-  if (values.length !== 1 || !/^(0|[1-9]\\d*)$/.test(values[0])) {
+  if (values.length !== 1 || !/^(0|[1-9]\d*)$/.test(values[0])) {
     throw new ValidationError(key + ' must be a single non-negative integer');
   }
   const value = Number(values[0]);
@@ -160,7 +160,7 @@ function readIntegerQuery(searchParams, key, defaultValue) {
 
 function readBearerToken(header) {
   if (typeof header !== 'string') return undefined;
-  const match = header.match(/^Bearer\\s+([A-Za-z0-9_-]{43})$/i);
+  const match = header.match(/^Bearer\s+([A-Za-z0-9_-]{43})$/i);
   return match?.[1];
 }
 
@@ -193,8 +193,8 @@ async function main() {
   }
   const server = createIdentityServer();
   server.listen(port, host, () => {
-    process.stdout.write('Clargen Health ID API listening at http://' + host + ':' + port + '\\n');
-    process.stdout.write('SQLite database: ' + (process.env.CLARGEN_DB_PATH ?? './data/clargen.sqlite') + '\\n');
+    process.stdout.write('Clargen Health ID API listening at http://' + host + ':' + port + '\n');
+    process.stdout.write('SQLite database: ' + (process.env.CLARGEN_DB_PATH ?? './data/clargen.sqlite') + '\n');
   });
   const shutdown = () => server.close(() => process.exit(0));
   process.on('SIGINT', shutdown);
@@ -203,7 +203,7 @@ async function main() {
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   main().catch((error) => {
-    process.stderr.write((error instanceof Error ? error.message : String(error)) + '\\n');
+    process.stderr.write((error instanceof Error ? error.message : String(error)) + '\n');
     process.exitCode = 1;
   });
 }

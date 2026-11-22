@@ -12,13 +12,13 @@ function normalizeIdentifier(value) {
   const identifier = value.trim();
   if (identifier.includes('@')) {
     const email = identifier.toLowerCase();
-    if (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email)) {
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       throw new ValidationError('identifier must be a valid email address or international mobile number');
     }
     return { column: 'email', value: email };
   }
-  const mobile = identifier.replace(/[\\s()-]/g, '');
-  if (!/^\\+?[1-9]\\d{7,14}$/.test(mobile)) {
+  const mobile = identifier.replace(/[\s()-]/g, '');
+  if (!/^\+?[1-9]\d{7,14}$/.test(mobile)) {
     throw new ValidationError('identifier must be a valid email address or international mobile number');
   }
   return { column: 'mobile', value: mobile };

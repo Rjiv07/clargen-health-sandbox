@@ -22,11 +22,6 @@ export function setIndividualDiscoverability(database, accountId, discoverable) 
   return discoverable;
 }
 
-/**
- * Search is limited to explicitly discoverable identities. Only names and
- * Clargen Health IDs are searchable; contact details and date of birth are
- * neither query fields nor returned fields.
- */
 export function searchDiscoverableIndividuals(database, accountId, options = {}) {
   const query = typeof options.query === 'string' ? options.query.trim() : '';
   if (query.length < 2 || query.length > 80) {
@@ -57,15 +52,7 @@ export function searchDiscoverableIndividuals(database, accountId, options = {})
     "OR (i.given_name || ' ' || i.family_name) LIKE ? ESCAPE '\\' COLLATE NOCASE) " +
     "ORDER BY i.family_name COLLATE NOCASE, i.given_name COLLATE NOCASE, i.health_id " +
     "LIMIT ? OFFSET ?"
-  ).all(
-    accountId,
-    healthIdPattern,
-    namePattern,
-    namePattern,
-    namePattern,
-    limit + 1,
-    offset,
-  );
+  ).all(accountId, healthIdPattern, namePattern, namePattern, namePattern, limit + 1, offset);
 
   const hasMore = rows.length > limit;
   const individuals = rows.slice(0, limit).map((row) => ({
