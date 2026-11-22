@@ -9,7 +9,6 @@ function normalizeIdentifier(value) {
   if (typeof value !== 'string' || !value.trim() || value.length > 254) {
     throw new ValidationError('identifier must be a registered email address or mobile number');
   }
-
   const identifier = value.trim();
   if (identifier.includes('@')) {
     const email = identifier.toLowerCase();
@@ -18,7 +17,6 @@ function normalizeIdentifier(value) {
     }
     return { column: 'email', value: email };
   }
-
   const mobile = identifier.replace(/[\s()-]/g, '');
   if (!/^\+?[1-9]\d{7,14}$/.test(mobile)) {
     throw new ValidationError('identifier must be a valid email address or international mobile number');
@@ -40,13 +38,10 @@ export async function signIn(database, input, options = {}) {
     throw new ValidationError('password is required and must not exceed 128 bytes');
   }
 
-  // column is selected from a fixed allowlist; the identifier value is parameterised.
   const account = database.prepare(
-    `SELECT a.id AS account_id, a.password_hash, a.status, i.health_id
-     FROM accounts a
-     JOIN individuals i ON i.account_id = a.id
-     WHERE a.${identifier.column} = ?
-     LIMIT 1`
+    'SELECT a.id AS account_id, a.password_hash, a.status, i.health_id ' +
+    'FROM accounts a JOIN individuals i ON i.account_id = a.id ' +
+    'WHERE a.' + identifier.column + ' = ? LIMIT 1'
   ).get(identifier.value);
 
   const passwordMatches = await (options.verifyPassword ?? verifyPassword)(password, account?.password_hash);
@@ -61,51 +56,29 @@ export async function signIn(database, input, options = {}) {
   const expiresAt = new Date(now.getTime() + SESSION_LIFETIME_MS).toISOString();
 
   database.prepare(
-    `INSERT INTO sessions
-      (id, account_id, token_hash, created_at, expires_at, last_used_at, revoked_at)
-     VALUES (?, ?, ?, ?, ?, ?, NULL)`
+    'INSERT INTO sessions (id, account_id, token_hash, created_at, expires_at, last_used_at, revoked_at) ' +
+    'VALUES (?, ?, ?, ?, ?, ?, NULL)'
   ).run(randomUUID(), account.account_id, tokenHash, createdAt, expiresAt, createdAt);
 
-  return {
-    accessToken,
-    tokenType: 'Bearer',
-    expiresAt,
-    healthId: account.health_id,
-  };
+  return { accessToken, tokenType: 'Bearer', expiresAt, healthId: account.health_id };
 }
 
-/**
- * Resolve a bearer token to the currently active account. Only a SHA-256 hash
- * of the opaque token is stored in SQLite.
- */
+/** Resolve a bearer token to an active account; only its SHA-256 hash is stored. */
 export function authenticateAccessToken(database, token) {
-  if (typeof token !== 'string' || !/^[A-Za-z0-9_-]{43}$/.test(token)) {
-    return undefined;
-  }
+  if (typeof token !== 'string' || !/^[A-Za-z0-9_-]{43}$/.test(token)) return undefined;
   const tokenHash = hashAccessToken(token);
   const now = new Date().toISOString();
   const session = database.prepare(
-    `SELECT s.id AS session_id, s.account_id, i.health_id
-     FROM sessions s
-     JOIN accounts a ON a.id = s.account_id
-     JOIN individuals i ON i.account_id = a.id
-     WHERE s.token_hash = ?
-       AND s.revoked_at IS NULL
-       AND s.expires_at > ?
-       AND a.status = 'active'
-     LIMIT 1`
+    'SELECT s.id AS session_id, s.account_id, i.health_id ' +
+    'FROM sessions s JOIN accounts a ON a.id = s.account_id ' +
+    'JOIN individuals i ON i.account_id = a.id ' +
+    'WHERE s.token_hash = ? AND s.revoked_at IS NULL AND s.expires_at > ? ' +
+    "AND a.status = 'active' LIMIT 1"
   ).get(tokenHash, now);
 
   if (!session) return undefined;
-
-  database.prepare('UPDATE sessions SET last_used_at = ? WHERE id = ?')
-    .run(now, session.session_id);
-
-  return {
-    sessionId: session.session_id,
-    accountId: session.account_id,
-    healthId: session.health_id,
-  };
+  database.prepare('UPDATE sessions SET last_used_at = ? WHERE id = ?').run(now, session.session_id);
+  return { sessionId: session.session_id, accountId: session.account_id, healthId: session.health_id };
 }
 
 export function revokeAccessToken(database, token) {
@@ -120,29 +93,21 @@ export function getIndividualProfileByHealthId(database, accountId, healthIdInpu
   if (typeof healthIdInput !== 'string') return undefined;
   const healthId = healthIdInput.trim().toUpperCase();
   if (!isValidHealthId(healthId)) return undefined;
-
   const individual = database.prepare(
-    `SELECT i.health_id, i.given_name, i.family_name, i.date_of_birth, i.created_at,
-            a.email, a.mobile
-     FROM individuals i
-     JOIN accounts a ON a.id = i.account_id
-     WHERE i.account_id = ? AND i.health_id = ? AND a.status = 'active'
-     LIMIT 1`
+    'SELECT i.health_id, i.given_name, i.family_name, i.date_of_birth, i.created_at, ' +
+    'i.discoverable, a.email, a.mobile FROM individuals i ' +
+    'JOIN accounts a ON a.id = i.account_id ' +
+    "WHERE i.account_id = ? AND i.health_id = ? AND a.status = 'active' LIMIT 1"
   ).get(accountId, healthId);
-
   return individual ? toPublicProfile(individual) : undefined;
 }
 
 export function getOwnIndividualProfile(database, accountId) {
   const individual = database.prepare(
-    `SELECT i.health_id, i.given_name, i.family_name, i.date_of_birth, i.created_at,
-            a.email, a.mobile
-     FROM individuals i
-     JOIN accounts a ON a.id = i.account_id
-     WHERE i.account_id = ? AND a.status = 'active'
-     LIMIT 1`
+    'SELECT i.health_id, i.given_name, i.family_name, i.date_of_birth, i.created_at, ' +
+    'i.discoverable, a.email, a.mobile FROM individuals i ' +
+    "JOIN accounts a ON a.id = i.account_id WHERE i.account_id = ? AND a.status = 'active' LIMIT 1"
   ).get(accountId);
-
   return individual ? toPublicProfile(individual) : undefined;
 }
 
@@ -155,5 +120,6 @@ function toPublicProfile(row) {
     email: row.email,
     mobile: row.mobile,
     registeredAt: row.created_at,
+    discoverable: row.discoverable === 1,
   };
 }
