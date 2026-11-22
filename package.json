@@ -4,12 +4,15 @@
   "private": true,
   "description": "Independent Clargen digital health development sandbox",
   "workspaces": [
-    "backend/identity"
+    "backend/identity",
+    "backend/identity/fhir"
   ],
   "scripts": {
     "build": "npm run build --workspace @clargen/identity",
     "test": "npm run test --workspace @clargen/identity",
-    "typecheck": "npm run typecheck --workspace @clargen/identity"
+    "typecheck": "npm run typecheck --workspace @clargen/identity",
+    "fhir:build": "npm run build --workspace @clargen/fhir-profile",
+    "fhir:clean": "rm -rf backend/identity/fhir/fsh-generated backend/identity/fhir/fsh-tank"
   },
   "engines": {
     "node": "^22.18.0 || >=24.2.0"
