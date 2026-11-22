@@ -1,4 +1,4 @@
-name: FHIR profile validation
+name: Sprint 1 validation
 
 on:
   push:
@@ -10,7 +10,32 @@ on:
       - main
 
 jobs:
+  identity-package:
+    name: Identity package build, typecheck and unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install identity workspace dependencies
+        run: npm install --legacy-peer-deps --no-package-lock --no-audit --no-fund
+
+      - name: Build identity package
+        run: npm run build
+
+      - name: Typecheck identity package and tests
+        run: npm run typecheck
+
+      - name: Run identity unit tests
+        run: npm test
+
   build-fhir-profile:
+    name: Build and validate FHIR profile
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -30,7 +55,7 @@ jobs:
 
       - name: Validate generated StructureDefinition
         run: |
-          node -e "const fs=require('fs'); const p='backend/identity/fhir/fsh-generated/resources/StructureDefinition-clargen-patient.json'; const r=JSON.parse(fs.readFileSync(p,'utf8')); if(r.resourceType!=='StructureDefinition') throw new Error('Not a StructureDefinition'); if(r.url!=='https://clargen.health/fhir/StructureDefinition/clargen-patient') throw new Error('Unexpected canonical URL: '+r.url); console.log('Validated',r.url);"
+          node -e "const fs=require('fs'); const p='backend/identity/fhir/fsh-generated/resources/StructureDefinition-clargen-patient.json'; const r=JSON.parse(fs.readFileSync(p,'utf8')); if(r.resourceType!=='StructureDefinition') throw new Error('Not a StructureDefinition'); if(r.url!=='https://clargen.health/fhir/StructureDefinition/clargen-patient') throw new Error('Unexpected canonical URL: '+r.url); if(r.type!=='Patient'||r.derivation!=='constraint') throw new Error('Unexpected Patient profile metadata'); console.log('Validated',r.url);"
 
       - name: Upload generated FHIR resources
         uses: actions/upload-artifact@v4
