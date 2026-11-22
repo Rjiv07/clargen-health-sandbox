@@ -20,13 +20,17 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
 
-      - name: Install dependencies
-        run: npm ci
+      - name: Install SUSHI
+        run: npm install --global fsh-sushi@3.21.0
 
       - name: Build FHIR profile
-        run: npm run fhir:build
+        working-directory: backend/identity/fhir
+        run: sushi .
+
+      - name: Validate generated StructureDefinition
+        run: |
+          node -e "const fs=require('fs'); const p='backend/identity/fhir/fsh-generated/resources/StructureDefinition-clargen-patient.json'; const r=JSON.parse(fs.readFileSync(p,'utf8')); if(r.resourceType!=='StructureDefinition') throw new Error('Not a StructureDefinition'); if(r.url!=='https://clargen.health/fhir/StructureDefinition/clargen-patient') throw new Error('Unexpected canonical URL: '+r.url); console.log('Validated',r.url);"
 
       - name: Upload generated FHIR resources
         uses: actions/upload-artifact@v4
