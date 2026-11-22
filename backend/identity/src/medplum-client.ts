@@ -2,10 +2,10 @@ import { createReference, MedplumClient, type WithId } from '@medplum/core';
 import type {
   AccessPolicy, Bundle, Organization, Patient, Project, ProjectMembership, StructureDefinition,
 } from '@medplum/fhirtypes';
-import { createIdentityIssuerAccessPolicy, createOrganizationIdentifierImmutabilityPolicy, createPatientIdentifierImmutabilityPolicy } from './access-policies';
-import { CLARGEN_ORGANIZATION_PROFILE_URL, CLARGEN_PATIENT_PROFILE_URL } from './constants';
-import type { IdentityFhirClient } from './types';
-import type { OrganizationIdentityFhirClient } from './participant-types';
+import { createIdentityIssuerAccessPolicy, createOrganizationIdentifierImmutabilityPolicy, createPatientIdentifierImmutabilityPolicy } from './access-policies.js';
+import { CLARGEN_ORGANIZATION_PROFILE_URL, CLARGEN_PATIENT_PROFILE_URL } from './constants.js';
+import type { IdentityFhirClient } from './types.js';
+import type { OrganizationIdentityFhirClient } from './participant-types.js';
 
 export class MedplumIdentityFhirClient implements IdentityFhirClient, OrganizationIdentityFhirClient {
   private readonly medplum: MedplumClient;
