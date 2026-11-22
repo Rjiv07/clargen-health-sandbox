@@ -6,12 +6,14 @@ This package contains no UI, signup/login workflow, external identity integratio
 
 ## Required deployment configuration
 
-Before wiring this package into a server endpoint, create these project-scoped FHIR resources with a project administrator:
+Before wiring this package into a server endpoint, build the FHIR profile from `backend/identity/fhir/input/fsh/ClargenPatient.fsh` with `npm run fhir:build`.
+Install the generated `backend/identity/fhir/fsh-generated/resources/StructureDefinition-clargen-patient.json` resource into the intended Medplum development project. Do not upload the FSH source file itself. The canonical URL is `https://clargen.health/fhir/StructureDefinition/clargen-patient`.
 
-1. Install the compiled `fhir/clargen-patient.fsh` profile as a `StructureDefinition` with canonical URL `https://clargen.health/fhir/StructureDefinition/clargen-patient`.
-2. Create the issuer `AccessPolicy` returned by `createIdentityIssuerAccessPolicy()`.
-3. Create a dedicated `ClientApplication`, assign that policy through its membership, and keep its secret only in the Clargen backend's secret store.
-4. Add `createPatientIdentifierImmutabilityPolicy()` to each patient membership alongside the normal patient-compartment policy.
+Then create these project-scoped FHIR resources with a project administrator:
+
+1. Create the issuer `AccessPolicy` returned by `createIdentityIssuerAccessPolicy()`.
+2. Create a dedicated `ClientApplication`, assign that policy through its membership, and keep its secret only in the Clargen backend's secret store.
+3. Add `createPatientIdentifierImmutabilityPolicy()` to each patient membership alongside the normal patient-compartment policy.
 
 The issuer requires `Patient` `create`, `search`, and `read` only. It intentionally has no update or delete authority. A profile-update request must use a caller-scoped Medplum token so Medplum evaluates that caller's own `AccessPolicy`.
 
