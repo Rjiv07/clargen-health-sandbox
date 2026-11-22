@@ -2,7 +2,7 @@ import { createReference, MedplumClient, type WithId } from '@medplum/core';
 import type {
   AccessPolicy, Bundle, Organization, Patient, Project, ProjectMembership, StructureDefinition,
 } from '@medplum/fhirtypes';
-import { createIdentityIssuerAccessPolicy, createPatientIdentifierImmutabilityPolicy } from './access-policies';
+import { createIdentityIssuerAccessPolicy, createOrganizationIdentifierImmutabilityPolicy, createPatientIdentifierImmutabilityPolicy } from './access-policies';
 import { CLARGEN_PATIENT_PROFILE_URL } from './constants';
 import type { IdentityFhirClient } from './types';
 import type { OrganizationIdentityFhirClient } from './participant-types';
@@ -37,6 +37,7 @@ export interface ProvisionedIdentityResources {
   readonly patientProfile: WithId<StructureDefinition>;
   readonly issuerPolicy: WithId<AccessPolicy>;
   readonly identifierImmutabilityPolicy: WithId<AccessPolicy>;
+  readonly organizationIdentifierImmutabilityPolicy: WithId<AccessPolicy>;
 }
 
 export async function provisionIdentityResources(adminClient: MedplumClient, patientProfile: StructureDefinition): Promise<ProvisionedIdentityResources> {
@@ -46,7 +47,8 @@ export async function provisionIdentityResources(adminClient: MedplumClient, pat
   const installedProfile = await upsertStructureDefinition(adminClient, patientProfile);
   const issuerPolicy = await upsertAccessPolicy(adminClient, createIdentityIssuerAccessPolicy());
   const identifierImmutabilityPolicy = await upsertAccessPolicy(adminClient, createPatientIdentifierImmutabilityPolicy());
-  return { patientProfile: installedProfile, issuerPolicy, identifierImmutabilityPolicy };
+  const organizationIdentifierImmutabilityPolicy = await upsertAccessPolicy(adminClient, createOrganizationIdentifierImmutabilityPolicy());
+  return { patientProfile: installedProfile, issuerPolicy, identifierImmutabilityPolicy, organizationIdentifierImmutabilityPolicy };
 }
 
 export async function configurePatientMembershipAccess(adminClient: MedplumClient, patientId: string): Promise<WithId<ProjectMembership>> {
