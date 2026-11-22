@@ -3,55 +3,90 @@
     "_postman_id": "7c1e9f72-6d83-4a3a-a3a4-6e50a3a4b1f7",
     "name": "Clargen Health Identity API - Sprint 1",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-    "description": "Demo requests for the Sprint 1 identity HTTP API. Requires a trusted host application to mount createIdentityHttpServer() and validate the bearer token."
+    "description": "Clargen Health identity API examples. The participant API supports individual Patient and organisation Organization identities, plus unified Health ID lookup. A trusted authenticated host must mount the API factory."
   },
   "variable": [
-    {"key": "baseUrl", "value": "http://localhost:8080"},
-    {"key": "accessToken", "value": ""},
-    {"key": "healthId", "value": "CLH-REPLACE-WITH-ISSUED-ID"},
-    {"key": "patientId", "value": "REPLACE-WITH-PATIENT-RESOURCE-ID"},
-    {"key": "versionId", "value": "REPLACE-WITH-META-VERSION-ID"}
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080"
+    },
+    {
+      "key": "accessToken",
+      "value": ""
+    },
+    {
+      "key": "healthId",
+      "value": "CLH-REPLACE-WITH-ISSUED-ID"
+    },
+    {
+      "key": "patientId",
+      "value": "REPLACE-WITH-PATIENT-RESOURCE-ID"
+    },
+    {
+      "key": "versionId",
+      "value": "REPLACE-WITH-META-VERSION-ID"
+    }
   ],
   "item": [
     {
       "name": "Health check",
-      "request": {"method": "GET", "url": "{{baseUrl}}/health"}
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/health"
+      }
     },
     {
       "name": "Issue synthetic Patient identity",
       "request": {
         "method": "POST",
         "header": [
-          {"key": "Authorization", "value": "Bearer {{accessToken}}"},
-          {"key": "Content-Type", "value": "application/json"}
+          {
+            "key": "Authorization",
+            "value": "Bearer {{accessToken}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
         ],
         "body": {
           "mode": "raw",
           "raw": "{\n  \"officialFamilyName\": \"Demo\",\n  \"officialGivenNames\": [\"Aarav\"],\n  \"birthDate\": \"1994-05-12\",\n  \"gender\": \"unknown\",\n  \"email\": \"aarav.demo@example.test\"\n}",
-          "options": {"raw": {"language": "json"}}
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
         },
         "url": "{{baseUrl}}/api/v1/patients"
       },
-      "event": [{
-        "listen": "test",
-        "script": {
-          "type": "text/javascript",
-          "exec": [
-            "if (pm.response.code === 201) {",
-            "  const body = pm.response.json();",
-            "  pm.collectionVariables.set('healthId', body.healthId);",
-            "  pm.collectionVariables.set('patientId', body.patient.id);",
-            "  pm.collectionVariables.set('versionId', body.patient.meta?.versionId ?? '');",
-            "}"
-          ]
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "if (pm.response.code === 201) {",
+              "  const body = pm.response.json();",
+              "  pm.collectionVariables.set('healthId', body.healthId);",
+              "  pm.collectionVariables.set('patientId', body.patient.id);",
+              "  pm.collectionVariables.set('versionId', body.patient.meta?.versionId ?? '');",
+              "}"
+            ]
+          }
         }
-      }]
+      ]
     },
     {
       "name": "Find Patient by Clargen Health ID",
       "request": {
         "method": "GET",
-        "header": [{"key": "Authorization", "value": "Bearer {{accessToken}}"}],
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{accessToken}}"
+          }
+        ],
         "url": "{{baseUrl}}/api/v1/patients/health-id/{{healthId}}"
       }
     },
@@ -59,7 +94,12 @@
       "name": "Read Patient profile",
       "request": {
         "method": "GET",
-        "header": [{"key": "Authorization", "value": "Bearer {{accessToken}}"}],
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{accessToken}}"
+          }
+        ],
         "url": "{{baseUrl}}/api/v1/patients/{{patientId}}/profile"
       }
     },
@@ -68,15 +108,100 @@
       "request": {
         "method": "PATCH",
         "header": [
-          {"key": "Authorization", "value": "Bearer {{accessToken}}"},
-          {"key": "Content-Type", "value": "application/json"}
+          {
+            "key": "Authorization",
+            "value": "Bearer {{accessToken}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
         ],
         "body": {
           "mode": "raw",
           "raw": "{\n  \"officialFamilyName\": \"Demo\",\n  \"officialGivenNames\": [\"Aarav\", \"Kumar\"],\n  \"expectedVersionId\": \"{{versionId}}\"\n}",
-          "options": {"raw": {"language": "json"}}
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
         },
         "url": "{{baseUrl}}/api/v1/patients/{{patientId}}/profile"
+      }
+    },
+    {
+      "name": "Issue organisation identity",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Synthetic Supplier Ltd\",\n  \"participantType\": \"supplier\",\n  \"registrationNumber\": \"SYN-001\",\n  \"email\": \"quality@example.test\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/participants/organizations",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "participants",
+            "organizations"
+          ]
+        }
+      }
+    },
+    {
+      "name": "Issue individual identity",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"officialFamilyName\": \"Example\",\n  \"officialGivenNames\": [\n    \"Synthetic\"\n  ],\n  \"birthDate\": \"1990-01-02\",\n  \"gender\": \"unknown\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/participants/individuals",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "participants",
+            "individuals"
+          ]
+        }
+      }
+    },
+    {
+      "name": "Query participant by Health ID",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/participants/health-id/{{healthId}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "participants",
+            "health-id",
+            "{{healthId}}"
+          ]
+        }
       }
     }
   ]

@@ -1,16 +1,21 @@
 import { describe, expect, test } from 'vitest';
-import { createIdentityIssuerAccessPolicy, createPatientIdentifierImmutabilityPolicy } from './access-policies';
+import { createIdentityIssuerAccessPolicy, createOrganizationIdentifierImmutabilityPolicy, createPatientIdentifierImmutabilityPolicy } from './access-policies';
 
-describe('Clargen identity access policies', () => {
-  test('limits the issuer to the interactions needed for conditional creation', () => {
+describe('identity access policies', () => {
+  test('allows the restricted issuer to create and search both identity resource types', () => {
     expect(createIdentityIssuerAccessPolicy().resource).toEqual([
       { resourceType: 'Patient', interaction: ['create', 'search', 'read'] },
+      { resourceType: 'Organization', interaction: ['create', 'search', 'read'] },
     ]);
   });
-
-  test('makes the patient identifier read-only to the patient profile', () => {
+  test('keeps individual identity identifiers immutable', () => {
     expect(createPatientIdentifierImmutabilityPolicy().resource).toEqual([
       { resourceType: 'Patient', criteria: 'Patient?_id=%patient.id', readonlyFields: ['identifier'] },
+    ]);
+  });
+  test('keeps organisation identity identifiers immutable', () => {
+    expect(createOrganizationIdentifierImmutabilityPolicy().resource).toEqual([
+      { resourceType: 'Organization', criteria: 'Organization?_id=%organization.id', readonlyFields: ['identifier'] },
     ]);
   });
 });
