@@ -12,14 +12,14 @@ export function buildClargenOrganization(input: CreateOrganizationProfileInput, 
   ];
   return {
     resourceType: 'Organization', active: true, meta: { profile: [CLARGEN_ORGANIZATION_PROFILE_URL] },
-    identifier: [buildClargenHealthIdentifier(healthId)],
+    identifier: [buildClargenOrganizationHealthIdentifier(healthId)],
     type: [{ coding: [{ system: CLARGEN_PARTICIPANT_TYPE_SYSTEM, code: input.participantType }] }],
     name: input.name.trim(),
     ...(input.registrationNumber ? { alias: [`Registration: ${input.registrationNumber.trim()}`] } : {}),
     ...(telecom.length ? { telecom } : {}),
   };
 }
-export function buildClargenHealthIdentifier(healthId: ClargenHealthId): Identifier {
+export function buildClargenOrganizationHealthIdentifier(healthId: ClargenHealthId): Identifier {
   return { use: 'usual', system: CLARGEN_HEALTH_ID_SYSTEM, value: healthId };
 }
 export function getOrganizationHealthId(organization: Organization): ClargenHealthId | undefined {
