@@ -12,7 +12,8 @@
     "typecheck": "npm run typecheck --workspace @clargen/identity",
     "fhir:build": "cd backend/identity/fhir && npx --yes fsh-sushi@3.21.0 .",
     "fhir:clean": "rm -rf backend/identity/fhir/fsh-generated backend/identity/fhir/fsh-tank",
-    "provision:medplum": "npm run build --workspace @clargen/identity && node backend/identity/scripts/provision-medplum.mjs"
+    "provision:medplum": "npm run build --workspace @clargen/identity && node backend/identity/scripts/provision-medplum.mjs",
+    "configure:patient-access": "npm run build --workspace @clargen/identity && node backend/identity/scripts/configure-patient-access.mjs"
   },
   "engines": {
     "node": "^22.18.0 || >=24.2.0"
