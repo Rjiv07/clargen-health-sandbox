@@ -1,4 +1,4 @@
-import type { MedplumClient, WithId } from '@medplum/core';
+import { MedplumClient, type WithId } from '@medplum/core';
 import type { Bundle, Patient } from '@medplum/fhirtypes';
 import type { IdentityFhirClient } from './types';
 
@@ -35,4 +35,26 @@ export class MedplumIdentityFhirClient implements IdentityFhirClient {
       },
     });
   }
+}
+
+export interface IdentityIssuerConnection {
+  readonly baseUrl: string;
+  readonly clientId: string;
+  readonly clientSecret: string;
+}
+
+/**
+ * Creates an authenticated issuer adapter for trusted server-side use only.
+ * Keep clientSecret in a server secret store; never call this from browser code.
+ */
+export async function connectIdentityIssuer(
+  connection: IdentityIssuerConnection
+): Promise<MedplumIdentityFhirClient> {
+  if (!connection.baseUrl || !connection.clientId || !connection.clientSecret) {
+    throw new Error('Medplum issuer baseUrl, clientId and clientSecret are required');
+  }
+
+  const medplum = new MedplumClient({ baseUrl: connection.baseUrl });
+  await medplum.startClientLogin(connection.clientId, connection.clientSecret);
+  return new MedplumIdentityFhirClient(medplum);
 }
