@@ -55,11 +55,11 @@ Its canonical URL is
 ## Provision the Medplum project
 
 The package exports `provisionIdentityResources(adminClient, patientProfile)`.
-Call it from a trusted deployment script with:
-
-- a MedplumClient authenticated as a project administrator for the
-  **Clargen Health Development** project; and
-- the generated StructureDefinition JSON parsed as a FHIR resource.
+The deployment command `npm run provision:medplum` builds the package and
+calls this function using a MedplumClient initialized with the short-lived
+administrator access token from the environment. Resource validation and
+upsert behavior live only in this TypeScript function; the script is a thin
+deployment wrapper.
 
 The function idempotently creates or updates the StructureDefinition and both
 Sprint 1 AccessPolicies. It stops if duplicate canonical URLs or policy names
@@ -68,6 +68,8 @@ are found. Do not use the restricted issuer client for provisioning.
 The issuer policy grants only Patient `create`, `search` and `read`.
 The identifier immutability policy is a separate policy and must be composed
 with the normal patient-compartment policy on each Patient membership.
+
+See [scripts/README.md](scripts/README.md) for the deployment procedure.
 
 ## Create the issuer ClientApplication
 
