@@ -126,3 +126,15 @@ test('signup supports mobile-only registration when email is not provided', asyn
     assert.equal(account.mobile, '+919876543211');
   });
 });
+
+test('signup rejects an already registered mobile number', async () => {
+  await withDatabase(async (database) => {
+    await registerIndividual(database, validInput);
+    await assert.rejects(
+      registerIndividual(database, { ...validInput, email: 'second@example.com' }),
+      ContactAlreadyRegisteredError,
+    );
+    assert.equal(database.prepare('SELECT COUNT(*) AS count FROM accounts').get().count, 1);
+    assert.equal(database.prepare('SELECT COUNT(*) AS count FROM individuals').get().count, 1);
+  });
+});
