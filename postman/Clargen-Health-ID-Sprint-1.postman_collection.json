@@ -1,0 +1,28 @@
+{
+  "info": {
+    "name": "Clargen Health ID - Sprint 1",
+    "description": "Local individual signup and Clargen Health ID issuance API.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://127.0.0.1:8080" }
+  ],
+  "item": [
+    {
+      "name": "Health check",
+      "request": { "method": "GET", "url": "{{baseUrl}}/health" }
+    },
+    {
+      "name": "Signup and issue Health ID",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"givenName\": \"Asha\",\n  \"familyName\": \"Rao\",\n  \"dateOfBirth\": \"1998-04-16\",\n  \"email\": \"asha.rao@example.com\",\n  \"mobile\": \"+919876543210\",\n  \"password\": \"A-long-local-test-passphrase-2026\"\n}"
+        },
+        "url": "{{baseUrl}}/api/v1/signup"
+      }
+    }
+  ]
+}

@@ -1,27 +1,12 @@
-# Dependencies
 node_modules/
-**/node_modules/
-
-# Build output
-dist/
-**/dist/
-coverage/
-*.tsbuildinfo
-backend/identity/fhir/fsh-generated/
-backend/identity/fhir/fsh-tank/
-
-# Environment and secrets
 .env
 .env.*
 !.env.example
-
-# Logs and temporary files
 *.log
 .DS_Store
-.vite/
-
-# Local databases and test output
-*.db
+coverage/
+# Local SQLite database and its journal files
+data/
 *.sqlite
-test-results/
-playwright-report/
+*.sqlite-shm
+*.sqlite-wal
