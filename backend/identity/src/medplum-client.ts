@@ -141,7 +141,7 @@ export async function configurePatientMembershipAccess(
   if (!projectId) {
     throw new Error('Patient membership does not reference a valid project');
   }
-  const project = await adminClient.readResource<Project>('Project', projectId);
+  const project = await adminClient.readResource('Project', projectId);
   const defaultPatientPolicy = project.defaultAccessPolicies?.find(
     (entry) => entry.profileType === 'Patient'
   )?.accessPolicy ?? project.defaultPatientAccessPolicy;
@@ -166,7 +166,7 @@ export async function configurePatientMembershipAccess(
   // Re-running the command must not make the derived policy inherit itself.
   if (membership.accessPolicy?.reference) {
     const currentPolicyId = membership.accessPolicy.reference.split('/')[1];
-    const currentPolicy = await adminClient.readResource<AccessPolicy>('AccessPolicy', currentPolicyId);
+    const currentPolicy = await adminClient.readResource('AccessPolicy', currentPolicyId);
     if (currentPolicy.name === composedName) {
       const priorBase = currentPolicy.basedOn?.find(
         (reference) => reference.reference !== `AccessPolicy/${immutabilityPolicies[0].id}`
