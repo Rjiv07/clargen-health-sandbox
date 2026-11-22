@@ -8,6 +8,7 @@ export * from './organization-issuer';
 export * from './organization-profile';
 export * from './participant-lookup';
 export * from './participant-types';
+export * from './participant-http-api';
 export * from './patient-lookup';
 export * from './patient-profile';
 export * from './patient-profile-service';
