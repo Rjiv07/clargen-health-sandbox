@@ -30,6 +30,19 @@ CREATE TABLE IF NOT EXISTS individuals (
 
 CREATE INDEX IF NOT EXISTS individuals_name_idx
   ON individuals(family_name COLLATE NOCASE, given_name COLLATE NOCASE);
+
+CREATE TABLE IF NOT EXISTS sessions (
+  id TEXT PRIMARY KEY,
+  account_id TEXT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+  token_hash TEXT NOT NULL UNIQUE,
+  created_at TEXT NOT NULL,
+  expires_at TEXT NOT NULL,
+  last_used_at TEXT NOT NULL,
+  revoked_at TEXT
+);
+
+CREATE INDEX IF NOT EXISTS sessions_account_idx ON sessions(account_id);
+CREATE INDEX IF NOT EXISTS sessions_expiry_idx ON sessions(expires_at);
 `;
 
 export function openDatabase(databasePath = process.env.CLARGEN_DB_PATH ?? './data/clargen.sqlite') {
