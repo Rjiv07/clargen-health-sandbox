@@ -142,3 +142,15 @@ dedicated issuer ClientApplication credentials. Use only synthetic data.
 - API authentication is injected by the host and is not yet a login/OTP system.
 - The Postman collection is an API contract/demo aid; it does not replace a
   deployed host or authentication adapter.
+
+## Participant API contract
+
+The participant API factory is exported as `createParticipantHttpServer`. A trusted host supplies authentication and caller-scoped Medplum services; this repository does not pretend that the factory is itself a deployed/authenticated server.
+
+Routes:
+- `POST /api/v1/participants/individuals` — issue a FHIR Patient identity.
+- `POST /api/v1/participants/organizations` — issue a FHIR Organization identity.
+- `GET /api/v1/participants/health-id/:healthId` — find exactly one individual or organisation identity.
+- `GET /health` — service health.
+
+The authenticated request context separately controls individual issuance, organisation issuance, and lookup. A query fails closed if the same identifier is found on both resource types.
