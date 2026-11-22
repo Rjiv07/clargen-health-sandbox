@@ -1,5 +1,7 @@
 import { MedplumClient, type WithId } from '@medplum/core';
-import type { Bundle, Patient } from '@medplum/fhirtypes';
+import type { AccessPolicy, Bundle, Patient, StructureDefinition } from '@medplum/fhirtypes';
+import { createIdentityIssuerAccessPolicy, createPatientIdentifierImmutabilityPolicy } from './access-policies';
+import { CLARGEN_PATIENT_PROFILE_URL } from './constants';
 import type { IdentityFhirClient } from './types';
 
 /**
@@ -57,4 +59,79 @@ export async function connectIdentityIssuer(
   const medplum = new MedplumClient({ baseUrl: connection.baseUrl });
   await medplum.startClientLogin(connection.clientId, connection.clientSecret);
   return new MedplumIdentityFhirClient(medplum);
+}
+
+export interface ProvisionedIdentityResources {
+  readonly patientProfile: WithId<StructureDefinition>;
+  readonly issuerPolicy: WithId<AccessPolicy>;
+  readonly identifierImmutabilityPolicy: WithId<AccessPolicy>;
+}
+
+/**
+ * Installs or updates the Sprint 1 FHIR profile and access policies.
+ * The supplied MedplumClient must be authenticated as a project administrator.
+ * Do not use the restricted issuer client for provisioning.
+ */
+export async function provisionIdentityResources(
+  adminClient: MedplumClient,
+  patientProfile: StructureDefinition
+): Promise<ProvisionedIdentityResources> {
+  if (
+    patientProfile.resourceType !== 'StructureDefinition' ||
+    patientProfile.url !== CLARGEN_PATIENT_PROFILE_URL ||
+    patientProfile.type !== 'Patient' ||
+    patientProfile.derivation !== 'constraint'
+  ) {
+    throw new Error('A valid Clargen Patient StructureDefinition is required');
+  }
+
+  const installedProfile = await upsertStructureDefinition(adminClient, patientProfile);
+  const issuerPolicy = await upsertAccessPolicy(
+    adminClient,
+    createIdentityIssuerAccessPolicy()
+  );
+  const identifierImmutabilityPolicy = await upsertAccessPolicy(
+    adminClient,
+    createPatientIdentifierImmutabilityPolicy()
+  );
+
+  return {
+    patientProfile: installedProfile,
+    issuerPolicy,
+    identifierImmutabilityPolicy,
+  };
+}
+
+async function upsertStructureDefinition(
+  client: MedplumClient,
+  resource: StructureDefinition
+): Promise<WithId<StructureDefinition>> {
+  const matches = await client.searchResources(
+    'StructureDefinition',
+    `url=${encodeURIComponent(resource.url as string)}`
+  );
+  if (matches.length > 1) {
+    throw new Error('Multiple StructureDefinitions use the Clargen Patient canonical URL');
+  }
+  if (matches.length === 1) {
+    return client.updateResource({ ...resource, id: matches[0].id });
+  }
+  return client.createResource(resource);
+}
+
+async function upsertAccessPolicy(
+  client: MedplumClient,
+  resource: AccessPolicy
+): Promise<WithId<AccessPolicy>> {
+  const matches = await client.searchResources(
+    'AccessPolicy',
+    `name=${encodeURIComponent(resource.name as string)}`
+  );
+  if (matches.length > 1) {
+    throw new Error(`Multiple AccessPolicies are named "${resource.name}"`);
+  }
+  if (matches.length === 1) {
+    return client.updateResource({ ...resource, id: matches[0].id });
+  }
+  return client.createResource(resource);
 }
