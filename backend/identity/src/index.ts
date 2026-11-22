@@ -1,6 +1,7 @@
 export * from './access-policies';
 export * from './constants';
 export * from './health-id';
+export * from './http-api';
 export * from './identity-issuer';
 export * from './medplum-client';
 export * from './patient-lookup';
