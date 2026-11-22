@@ -3,7 +3,7 @@ import type {
   AccessPolicy, Bundle, Organization, Patient, Project, ProjectMembership, StructureDefinition,
 } from '@medplum/fhirtypes';
 import { createIdentityIssuerAccessPolicy, createOrganizationIdentifierImmutabilityPolicy, createPatientIdentifierImmutabilityPolicy } from './access-policies';
-import { CLARGEN_PATIENT_PROFILE_URL } from './constants';
+import { CLARGEN_ORGANIZATION_PROFILE_URL, CLARGEN_PATIENT_PROFILE_URL } from './constants';
 import type { IdentityFhirClient } from './types';
 import type { OrganizationIdentityFhirClient } from './participant-types';
 
@@ -35,20 +35,21 @@ export async function connectIdentityIssuer(connection: IdentityIssuerConnection
 
 export interface ProvisionedIdentityResources {
   readonly patientProfile: WithId<StructureDefinition>;
+  readonly organizationProfile: WithId<StructureDefinition>;
   readonly issuerPolicy: WithId<AccessPolicy>;
   readonly identifierImmutabilityPolicy: WithId<AccessPolicy>;
   readonly organizationIdentifierImmutabilityPolicy: WithId<AccessPolicy>;
 }
 
-export async function provisionIdentityResources(adminClient: MedplumClient, patientProfile: StructureDefinition): Promise<ProvisionedIdentityResources> {
-  if (patientProfile.resourceType !== 'StructureDefinition' || patientProfile.url !== CLARGEN_PATIENT_PROFILE_URL || patientProfile.type !== 'Patient' || patientProfile.derivation !== 'constraint') {
-    throw new Error('A valid Clargen Patient StructureDefinition is required');
-  }
+export async function provisionIdentityResources(adminClient: MedplumClient, patientProfile: StructureDefinition, organizationProfile: StructureDefinition): Promise<ProvisionedIdentityResources> {
+  if (patientProfile.resourceType !== 'StructureDefinition' || patientProfile.url !== CLARGEN_PATIENT_PROFILE_URL || patientProfile.type !== 'Patient' || patientProfile.derivation !== 'constraint') throw new Error('A valid Clargen Patient StructureDefinition is required');
+  if (organizationProfile.resourceType !== 'StructureDefinition' || organizationProfile.url !== CLARGEN_ORGANIZATION_PROFILE_URL || organizationProfile.type !== 'Organization' || organizationProfile.derivation !== 'constraint') throw new Error('A valid Clargen Organization StructureDefinition is required');
   const installedProfile = await upsertStructureDefinition(adminClient, patientProfile);
+  const installedOrganizationProfile = await upsertStructureDefinition(adminClient, organizationProfile);
   const issuerPolicy = await upsertAccessPolicy(adminClient, createIdentityIssuerAccessPolicy());
   const identifierImmutabilityPolicy = await upsertAccessPolicy(adminClient, createPatientIdentifierImmutabilityPolicy());
   const organizationIdentifierImmutabilityPolicy = await upsertAccessPolicy(adminClient, createOrganizationIdentifierImmutabilityPolicy());
-  return { patientProfile: installedProfile, issuerPolicy, identifierImmutabilityPolicy, organizationIdentifierImmutabilityPolicy };
+  return { patientProfile: installedProfile, organizationProfile: installedOrganizationProfile, issuerPolicy, identifierImmutabilityPolicy, organizationIdentifierImmutabilityPolicy };
 }
 
 export async function configurePatientMembershipAccess(adminClient: MedplumClient, patientId: string): Promise<WithId<ProjectMembership>> {
