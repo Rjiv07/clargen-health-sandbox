@@ -12,13 +12,14 @@ An independent, ABDM-inspired digital health development sandbox.
 
 ## Sprint 1 scope
 
-Sprint 1 implements the Clargen Health ID, its FHIR R4 Patient profile,
-server-side issuance and lookup primitives, and the Medplum security
-configuration needed to issue synthetic Patient identities.
+Sprint 1 delivers the Clargen Health ID identity foundation: a FHIR R4 Patient
+profile, server-side identity issuance, Health ID lookup, version-aware profile
+updates, Medplum access-policy configuration, and an authenticated HTTP API
+factory.
 
-Patient signup/login, provider record-query APIs, and local HPR/HFR directory
-replicas are later sprint work. This repository does not connect to official
-ABDM production services and does not issue real ABHA identities.
+Patient signup/login and OTP, provider record-query APIs, and local HPR/HFR
+directory replicas are later sprint work. This repository does not connect to
+official ABDM services and does not issue real ABHA identities.
 
 ## Development principles
 
@@ -49,37 +50,24 @@ Install dependencies from the repository root:
 
 ```bash
 npm install
-```
-
-Build, typecheck and run identity unit tests:
-
-```bash
+npm run fhir:build
 npm run build
 npm run typecheck
 npm test
 ```
 
-Compile the Clargen Patient FHIR R4 profile:
-
-```bash
-npm run fhir:build
-```
-
-The generated StructureDefinition is written to:
-
-`backend/identity/fhir/fsh-generated/resources/StructureDefinition-clargen-patient.json`
-
-See `backend/identity/fhir/README.md` and
-`backend/identity/README.md` for FHIR profile and Medplum setup instructions.
-
-The Medplum development server is provisioned separately from this repository.
+See [Sprint 1 demo instructions](backend/identity/README.md) for Medplum
+provisioning, issuer ClientApplication setup, membership policy configuration,
+API routes, and the Postman collection.
 
 ## Continuous integration
 
-GitHub Actions builds and validates the FHIR profile and runs the identity
-workspace build, TypeScript checks and unit tests on Sprint 1 branches and pull
-requests to main. The Medplum integration test remains opt-in and is run only
-against the isolated development project.
+The current GitHub Actions workflow builds the FHIR profile, validates its
+canonical URL, and uploads the generated FHIR resources. TypeScript build,
+typecheck, unit tests, and the opt-in Medplum integration test are listed in
+the Sprint 1 handoff instructions and must be run during final sprint
+validation. The Medplum integration test requires the isolated development
+project and dedicated issuer credentials.
 
 ## Security
 
