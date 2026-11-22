@@ -145,13 +145,6 @@ export async function configurePatientMembershipAccess(
   const defaultPatientPolicy = project.defaultAccessPolicies?.find(
     (entry) => entry.profileType === 'Patient'
   )?.accessPolicy ?? project.defaultPatientAccessPolicy;
-  const basePolicy = membership.accessPolicy ?? defaultPatientPolicy;
-  if (!basePolicy?.reference) {
-    throw new Error(
-      'No Patient access policy is configured on this membership or as the project default. Configure the standard Patient compartment policy first.'
-    );
-  }
-
   const immutabilityPolicies = await adminClient.searchResources(
     'AccessPolicy',
     `name=${encodeURIComponent('Clargen Patient Identifier Immutability')}`
@@ -163,6 +156,28 @@ export async function configurePatientMembershipAccess(
   }
 
   const composedName = `Clargen Patient Access Policy - ${projectId}`;
+  let basePolicy = membership.accessPolicy ?? defaultPatientPolicy;
+  if (!basePolicy?.reference) {
+    throw new Error(
+      'No Patient access policy is configured on this membership or as the project default. Configure the standard Patient compartment policy first.'
+    );
+  }
+
+  // Re-running the command must not make the derived policy inherit itself.
+  if (membership.accessPolicy?.reference) {
+    const currentPolicyId = membership.accessPolicy.reference.split('/')[1];
+    const currentPolicy = await adminClient.readResource<AccessPolicy>('AccessPolicy', currentPolicyId);
+    if (currentPolicy.name === composedName) {
+      const priorBase = currentPolicy.basedOn?.find(
+        (reference) => reference.reference !== `AccessPolicy/${immutabilityPolicies[0].id}`
+      );
+      basePolicy = priorBase ?? defaultPatientPolicy;
+    }
+  }
+  if (!basePolicy?.reference) {
+    throw new Error('Unable to resolve the base Patient compartment policy');
+  }
+
   const composedPolicy: AccessPolicy = {
     resourceType: 'AccessPolicy',
     name: composedName,
