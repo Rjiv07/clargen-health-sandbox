@@ -1,0 +1,36 @@
+name: FHIR profile validation
+
+on:
+  push:
+    branches:
+      - main
+      - "sprint-1/**"
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build-fhir-profile:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build FHIR profile
+        run: npm run fhir:build
+
+      - name: Upload generated FHIR resources
+        uses: actions/upload-artifact@v4
+        with:
+          name: clargen-health-fhir-r4-profile
+          path: backend/identity/fhir/fsh-generated/resources/
+          if-no-files-found: error
