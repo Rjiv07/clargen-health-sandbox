@@ -1,5 +1,12 @@
-import { MedplumClient, type WithId } from '@medplum/core';
-import type { AccessPolicy, Bundle, Patient, StructureDefinition } from '@medplum/fhirtypes';
+import { createReference, MedplumClient, type WithId } from '@medplum/core';
+import type {
+  AccessPolicy,
+  Bundle,
+  Patient,
+  Project,
+  ProjectMembership,
+  StructureDefinition,
+} from '@medplum/fhirtypes';
 import { createIdentityIssuerAccessPolicy, createPatientIdentifierImmutabilityPolicy } from './access-policies';
 import { CLARGEN_PATIENT_PROFILE_URL } from './constants';
 import type { IdentityFhirClient } from './types';
@@ -56,7 +63,7 @@ export async function connectIdentityIssuer(
     throw new Error('Medplum issuer baseUrl, clientId and clientSecret are required');
   }
 
-  const medplum = new MedplumClient({ baseUrl: connection.baseUrl });
+  const medplum = new MedplumClient({ baseUrl: connection.baseUrl, cacheTime: 0 });
   await medplum.startClientLogin(connection.clientId, connection.clientSecret);
   return new MedplumIdentityFhirClient(medplum);
 }
@@ -100,6 +107,88 @@ export async function provisionIdentityResources(
     issuerPolicy,
     identifierImmutabilityPolicy,
   };
+}
+
+/**
+ * Assigns a derived patient policy to an existing Patient membership.
+ *
+ * Medplum ProjectMembership has one accessPolicy reference. The derived policy
+ * therefore uses basedOn to retain the project's normal Patient compartment
+ * policy while adding a read-only Patient.identifier field restriction.
+ * This must run with a project administrator client.
+ */
+export async function configurePatientMembershipAccess(
+  adminClient: MedplumClient,
+  patientId: string
+): Promise<WithId<ProjectMembership>> {
+  if (!patientId || !/^[A-Za-z0-9.-]+$/.test(patientId)) {
+    throw new Error('A valid Medplum Patient resource ID is required');
+  }
+
+  const patient = await adminClient.readResource('Patient', patientId);
+  const memberships = await adminClient.searchResources(
+    'ProjectMembership',
+    `profile=Patient/${encodeURIComponent(patient.id as string)}`
+  );
+  if (memberships.length !== 1) {
+    throw new Error(
+      `Expected exactly one ProjectMembership for Patient/${patientId}; found ${memberships.length}. Create or resolve the membership first.`
+    );
+  }
+
+  const membership = memberships[0];
+  const projectId = membership.project.reference?.split('/')[1];
+  if (!projectId) {
+    throw new Error('Patient membership does not reference a valid project');
+  }
+  const project = await adminClient.readResource('Project', projectId);
+  const defaultPatientPolicy = project.defaultAccessPolicies?.find(
+    (entry) => entry.profileType === 'Patient'
+  )?.accessPolicy ?? project.defaultPatientAccessPolicy;
+  const immutabilityPolicies = await adminClient.searchResources(
+    'AccessPolicy',
+    `name=${encodeURIComponent('Clargen Patient Identifier Immutability')}`
+  );
+  if (immutabilityPolicies.length !== 1) {
+    throw new Error(
+      `Expected exactly one Clargen Patient Identifier Immutability policy; found ${immutabilityPolicies.length}. Run npm run provision:medplum first.`
+    );
+  }
+
+  const composedName = `Clargen Patient Access Policy - ${projectId}`;
+  let basePolicy = membership.accessPolicy ?? defaultPatientPolicy;
+  if (!basePolicy?.reference) {
+    throw new Error(
+      'No Patient access policy is configured on this membership or as the project default. Configure the standard Patient compartment policy first.'
+    );
+  }
+
+  // Re-running the command must not make the derived policy inherit itself.
+  if (membership.accessPolicy?.reference) {
+    const currentPolicyId = membership.accessPolicy.reference.split('/')[1];
+    const currentPolicy = await adminClient.readResource('AccessPolicy', currentPolicyId);
+    if (currentPolicy.name === composedName) {
+      const priorBase = currentPolicy.basedOn?.find(
+        (reference) => reference.reference !== `AccessPolicy/${immutabilityPolicies[0].id}`
+      );
+      basePolicy = priorBase ?? defaultPatientPolicy;
+    }
+  }
+  if (!basePolicy?.reference) {
+    throw new Error('Unable to resolve the base Patient compartment policy');
+  }
+
+  const composedPolicy: AccessPolicy = {
+    resourceType: 'AccessPolicy',
+    name: composedName,
+    basedOn: [basePolicy, createReference(immutabilityPolicies[0])],
+  };
+  const installedPolicy = await upsertAccessPolicy(adminClient, composedPolicy);
+
+  return adminClient.updateResource({
+    ...membership,
+    accessPolicy: createReference(installedPolicy),
+  });
 }
 
 async function upsertStructureDefinition(

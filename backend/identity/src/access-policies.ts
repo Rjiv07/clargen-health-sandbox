@@ -19,8 +19,9 @@ export function createIdentityIssuerAccessPolicy(): AccessPolicy {
 }
 
 /**
- * Add this policy to patient memberships alongside the standard patient
- * compartment policy. It prevents direct FHIR updates to Patient.identifier.
+ * Compose this policy with the project's standard Patient compartment policy
+ * through AccessPolicy.basedOn. The derived policy can then be assigned as the
+ * membership's single accessPolicy reference.
  */
 export function createPatientIdentifierImmutabilityPolicy(): AccessPolicy {
   return {

@@ -1,22 +1,15 @@
 # Clargen Health FHIR profile
 
 This folder is a self-contained FHIR R4 ImplementationGuide source project.
-The FSH source lives in `input/fsh/ClargenPatient.fsh`; SUSHI compiles it into
-FHIR resources under `fsh-generated/resources/`.
+The sole FSH source lives in `input/fsh/ClargenPatient.fsh`; SUSHI compiles it
+into FHIR resources under `fsh-generated/resources/`.
 
 ## Build
 
 From the repository root:
 
 ```bash
-npm install
 npm run fhir:build
-```
-
-Or from this folder:
-
-```bash
-npm run build
 ```
 
 The generated profile is:
@@ -29,19 +22,16 @@ Its canonical URL is:
 
 ## Install into Medplum
 
-After building, authenticate to the intended Medplum development project as
-an administrator and create/update the generated StructureDefinition resource.
-Use the generated JSON resource, not the FSH source file.
-
-For a local Medplum instance, the FHIR API is typically:
-
-`http://localhost:8103/fhir/R4`
+After building, use the repository's `npm run provision:medplum` command.
+It installs the generated StructureDefinition and the identity AccessPolicies
+into the selected Medplum development project. See
+`backend/identity/README.md` for the complete procedure.
 
 Do not install this draft profile into a production project without formal
 review, validation and approval. The profile is an independent Clargen
 development profile, not an official ABDM profile or ABHA credential.
 
-## Validation checklist
+## Profile requirements
 
 - FHIR version: R4 (4.0.1)
 - Canonical base: https://clargen.health/fhir
@@ -49,4 +39,4 @@ development profile, not an official ABDM profile or ABHA credential.
 - Health ID identifier system: https://clargen.health/fhir/identifier/health-id
 - Patient.active is required and fixed to true
 - Exactly one Clargen Health ID identifier slice is required
-- Name, birthDate and gender are required
+- Patient name, birthDate and gender are required

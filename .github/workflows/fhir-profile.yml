@@ -1,16 +1,17 @@
-name: FHIR profile validation
+name: Sprint 1 validation
 
 on:
   push:
     branches:
       - main
       - "sprint-1/**"
+      - "feature/**"
   pull_request:
     branches:
       - main
 
 jobs:
-  build-fhir-profile:
+  identity-and-fhir:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -20,13 +21,22 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
+          cache: npm
 
-      - name: Install SUSHI
-        run: npm install --global fsh-sushi@3.21.0
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Build identity package
+        run: npm run build
+
+      - name: Typecheck identity package and tests
+        run: npm run typecheck
+
+      - name: Run identity unit tests
+        run: npm test
 
       - name: Build FHIR profile
-        working-directory: backend/identity/fhir
-        run: sushi .
+        run: npm run fhir:build
 
       - name: Validate generated StructureDefinition
         run: |
