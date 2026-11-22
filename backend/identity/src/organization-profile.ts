@@ -41,7 +41,7 @@ export function validateCreateOrganizationProfileInput(input: CreateOrganization
   const issues: string[] = [];
   if (!input.name?.trim()) issues.push('name is required');
   if (!participantTypes.has(input.participantType)) issues.push('participantType must be supplier, laboratory or manufacturer');
-  if (input.email && !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(input.email.trim())) issues.push('email must be a valid email address');
+  if (input.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.email.trim())) issues.push('email must be a valid email address');
   if (input.phone !== undefined && !input.phone.trim()) issues.push('phone must not be blank');
   if (input.registrationNumber !== undefined && !input.registrationNumber.trim()) issues.push('registrationNumber must not be blank');
   if (issues.length) throw new IdentityValidationError('Invalid organization profile input', issues);
