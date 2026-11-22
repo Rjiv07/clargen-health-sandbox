@@ -1,0 +1,17 @@
+{
+  "name": "clargen-health-sandbox",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Independent Clargen digital health development sandbox",
+  "workspaces": [
+    "backend/identity"
+  ],
+  "scripts": {
+    "build": "npm run build --workspace @clargen/identity",
+    "test": "npm run test --workspace @clargen/identity",
+    "typecheck": "npm run typecheck --workspace @clargen/identity"
+  },
+  "engines": {
+    "node": "^22.18.0 || >=24.2.0"
+  }
+}
