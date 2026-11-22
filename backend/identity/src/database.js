@@ -2,48 +2,62 @@ import { chmodSync, mkdirSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 
-const SCHEMA = `
-PRAGMA foreign_keys = ON;
-PRAGMA journal_mode = WAL;
-PRAGMA busy_timeout = 5000;
+const SCHEMA = [
+  'PRAGMA foreign_keys = ON;',
+  'PRAGMA journal_mode = WAL;',
+  'PRAGMA busy_timeout = 5000;',
+  '',
+  'CREATE TABLE IF NOT EXISTS accounts (',
+  '  id TEXT PRIMARY KEY,',
+  '  email TEXT COLLATE NOCASE UNIQUE,',
+  '  mobile TEXT UNIQUE,',
+  '  password_hash TEXT NOT NULL,',
+  "  status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'disabled')),",
+  '  created_at TEXT NOT NULL,',
+  '  CHECK (email IS NOT NULL OR mobile IS NOT NULL)',
+  ');',
+  '',
+  'CREATE TABLE IF NOT EXISTS individuals (',
+  '  id TEXT PRIMARY KEY,',
+  '  account_id TEXT NOT NULL UNIQUE REFERENCES accounts(id) ON DELETE CASCADE,',
+  '  health_id TEXT NOT NULL UNIQUE,',
+  '  given_name TEXT NOT NULL,',
+  '  family_name TEXT NOT NULL,',
+  '  date_of_birth TEXT NOT NULL,',
+  '  created_at TEXT NOT NULL,',
+  '  discoverable INTEGER NOT NULL DEFAULT 0 CHECK (discoverable IN (0, 1)),',
+  "  CHECK (length(health_id) = 36 AND substr(health_id, 1, 4) = 'CLG-' AND substr(health_id, 5) NOT GLOB '*[^0-9A-F]*')",
+  ');',
+  '',
+  'CREATE INDEX IF NOT EXISTS individuals_name_idx',
+  '  ON individuals(family_name COLLATE NOCASE, given_name COLLATE NOCASE);',
+  '',
+  'CREATE TABLE IF NOT EXISTS sessions (',
+  '  id TEXT PRIMARY KEY,',
+  '  account_id TEXT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,',
+  '  token_hash TEXT NOT NULL UNIQUE,',
+  '  created_at TEXT NOT NULL,',
+  '  expires_at TEXT NOT NULL,',
+  '  last_used_at TEXT NOT NULL,',
+  '  revoked_at TEXT',
+  ');',
+  '',
+  'CREATE INDEX IF NOT EXISTS sessions_account_idx ON sessions(account_id);',
+  'CREATE INDEX IF NOT EXISTS sessions_expiry_idx ON sessions(expires_at);',
+].join('\n');
 
-CREATE TABLE IF NOT EXISTS accounts (
-  id TEXT PRIMARY KEY,
-  email TEXT COLLATE NOCASE UNIQUE,
-  mobile TEXT UNIQUE,
-  password_hash TEXT NOT NULL,
-  status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'disabled')),
-  created_at TEXT NOT NULL,
-  CHECK (email IS NOT NULL OR mobile IS NOT NULL)
-);
-
-CREATE TABLE IF NOT EXISTS individuals (
-  id TEXT PRIMARY KEY,
-  account_id TEXT NOT NULL UNIQUE REFERENCES accounts(id) ON DELETE CASCADE,
-  health_id TEXT NOT NULL UNIQUE,
-  given_name TEXT NOT NULL,
-  family_name TEXT NOT NULL,
-  date_of_birth TEXT NOT NULL,
-  created_at TEXT NOT NULL,
-  CHECK (length(health_id) = 36 AND substr(health_id, 1, 4) = 'CLG-' AND substr(health_id, 5) NOT GLOB '*[^0-9A-F]*')
-);
-
-CREATE INDEX IF NOT EXISTS individuals_name_idx
-  ON individuals(family_name COLLATE NOCASE, given_name COLLATE NOCASE);
-
-CREATE TABLE IF NOT EXISTS sessions (
-  id TEXT PRIMARY KEY,
-  account_id TEXT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
-  token_hash TEXT NOT NULL UNIQUE,
-  created_at TEXT NOT NULL,
-  expires_at TEXT NOT NULL,
-  last_used_at TEXT NOT NULL,
-  revoked_at TEXT
-);
-
-CREATE INDEX IF NOT EXISTS sessions_account_idx ON sessions(account_id);
-CREATE INDEX IF NOT EXISTS sessions_expiry_idx ON sessions(expires_at);
-`;
+function ensureDirectoryVisibilityMigration(database) {
+  const columns = database.prepare('PRAGMA table_info(individuals)').all();
+  if (!columns.some((column) => column.name === 'discoverable')) {
+    database.exec(
+      'ALTER TABLE individuals ADD COLUMN discoverable INTEGER NOT NULL DEFAULT 0 CHECK (discoverable IN (0, 1))'
+    );
+  }
+  database.exec(
+    'CREATE INDEX IF NOT EXISTS individuals_discoverable_name_idx ' +
+    'ON individuals(discoverable, family_name COLLATE NOCASE, given_name COLLATE NOCASE)'
+  );
+}
 
 export function openDatabase(databasePath = process.env.CLARGEN_DB_PATH ?? './data/clargen.sqlite') {
   const isMemoryDatabase = databasePath === ':memory:';
@@ -53,6 +67,7 @@ export function openDatabase(databasePath = process.env.CLARGEN_DB_PATH ?? './da
   }
   const database = new DatabaseSync(absolutePath);
   database.exec(SCHEMA);
+  ensureDirectoryVisibilityMigration(database);
   if (!isMemoryDatabase) {
     try { chmodSync(absolutePath, 0o600); } catch { /* Best-effort local file permission hardening. */ }
   }
