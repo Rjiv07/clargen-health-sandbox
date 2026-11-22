@@ -3,9 +3,39 @@
 Server-side, independent Clargen Health ID issuance, Patient lookup and Patient
 profile management for one Medplum development project.
 
-This Sprint 1 package provides identity primitives and the Medplum adapter. It
-does not contain patient signup/login, provider-facing record querying, a UI,
-external identity integration, or real patient data.
+This Sprint 1 package provides identity primitives, an authenticated HTTP API
+factory and the Medplum adapter. It does not contain patient signup/login,
+provider-facing record querying, a UI, external identity integration, or real
+patient data.
+
+## HTTP API
+
+The package exports `createIdentityHttpServer()`, a Node.js HTTP server
+factory. It uses dependency injection so the host application must supply
+authentication and caller-scoped Medplum services; it deliberately does not
+create an unauthenticated shortcut or reuse the privileged issuer credential
+for patient reads and updates.
+
+| Method | Route | Purpose |
+|---|---|---|
+| GET | `/health` | Liveness response |
+| POST | `/api/v1/patients` | Issue a Clargen Health ID and create a Patient |
+| GET | `/api/v1/patients/health-id/:healthId` | Find a Patient through the authenticated caller's permissions |
+| GET | `/api/v1/patients/:patientId/profile` | Read a Patient through the authenticated caller's permissions |
+| PATCH | `/api/v1/patients/:patientId/profile` | Update permitted profile fields with an expected version |
+
+All `/api/v1/*` routes require the host's `authenticate` dependency to
+validate the incoming session or bearer token and return a request context.
+The context's lookup, read and profile services must be constructed using the
+authenticated caller's Medplum permissions. Set `canIssue` only for actors
+authorized by the host application to issue identities. The API rejects
+unauthenticated requests and callers without issuance permission.
+
+The server factory is intended to be mounted by a trusted backend host. The
+actual authentication adapter and executable deployment entrypoint are not
+included in Sprint 1 because patient login/session implementation belongs to
+Sprint 2. Do not expose issuer credentials or privileged Medplum clients to a
+browser.
 
 ## FHIR profile
 
