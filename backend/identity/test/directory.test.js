@@ -1,4 +1,5 @@
 import test from 'node:test';
+import { DatabaseSync } from 'node:sqlite';
 import assert from 'node:assert/strict';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -92,4 +93,54 @@ test('LIKE wildcard characters are treated literally in search input', async () 
     assert.equal(result.individuals[0].givenName, '100% Natural');
     assert.notEqual(result.individuals[0].healthId, second.healthId);
   });
+});
+
+
+test('pre-Sprint 3 SQLite databases migrate existing individuals as non-discoverable', async () => {
+  const directory = mkdtempSync(join(tmpdir(), 'clargen-directory-migration-'));
+  const path = join(directory, 'legacy.sqlite');
+  let legacy;
+  let database;
+  try {
+    legacy = new DatabaseSync(path);
+    legacy.exec([
+      'CREATE TABLE accounts (',
+      'id TEXT PRIMARY KEY, email TEXT COLLATE NOCASE UNIQUE, mobile TEXT UNIQUE,',
+      "password_hash TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'disabled')),",
+      'created_at TEXT NOT NULL, CHECK (email IS NOT NULL OR mobile IS NOT NULL));',
+      'CREATE TABLE individuals (',
+      'id TEXT PRIMARY KEY, account_id TEXT NOT NULL UNIQUE REFERENCES accounts(id) ON DELETE CASCADE,',
+      'health_id TEXT NOT NULL UNIQUE, given_name TEXT NOT NULL, family_name TEXT NOT NULL,',
+      'date_of_birth TEXT NOT NULL, created_at TEXT NOT NULL,',
+      "CHECK (length(health_id) = 36 AND substr(health_id, 1, 4) = 'CLG-' AND substr(health_id, 5) NOT GLOB '*[^0-9A-F]*'));",
+    ].join('\n'));
+    legacy.prepare(
+      'INSERT INTO accounts (id, email, password_hash, status, created_at) VALUES (?, ?, ?, ?, ?)'
+    ).run('legacy-account', 'legacy@example.com', 'legacy-hash', 'active', new Date().toISOString());
+    legacy.prepare(
+      'INSERT INTO individuals (id, account_id, health_id, given_name, family_name, date_of_birth, created_at) ' +
+      'VALUES (?, ?, ?, ?, ?, ?, ?)'
+    ).run(
+      'legacy-individual',
+      'legacy-account',
+      'CLG-0123456789ABCDEF0123456789ABCDEF',
+      'Legacy',
+      'Person',
+      '1990-01-01',
+      new Date().toISOString(),
+    );
+    legacy.close();
+    legacy = undefined;
+
+    database = openDatabase(path);
+    const saved = getOwnIndividualProfile(database, 'legacy-account');
+    assert.equal(saved.givenName, 'Legacy');
+    assert.equal(saved.discoverable, false);
+    const columns = database.prepare('PRAGMA table_info(individuals)').all();
+    assert.ok(columns.some((column) => column.name === 'discoverable'));
+  } finally {
+    if (legacy?.open) legacy.close();
+    if (database?.isOpen) database.close();
+    rmSync(directory, { recursive: true, force: true });
+  }
 });
