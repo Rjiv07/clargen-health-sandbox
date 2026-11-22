@@ -183,7 +183,7 @@ function sendJson(response: ServerResponse, statusCode: number, body: unknown): 
   }
   const payload = JSON.stringify(body);
   response.writeHead(statusCode, {
-    'Content-Type': 'application/fhir+json; charset=utf-8',
+    'Content-Type': 'application/json; charset=utf-8',
     'Content-Length': Buffer.byteLength(payload),
     'Cache-Control': 'no-store',
     'X-Content-Type-Options': 'nosniff',
