@@ -1,21 +1,16 @@
 {
   "name": "clargen-health-sandbox",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
-  "description": "Independent Clargen digital health development sandbox",
-  "workspaces": [
-    "backend/identity"
-  ],
+  "type": "module",
+  "description": "Independent local Clargen Health ID identity sandbox",
   "scripts": {
-    "build": "npm run build --workspace @clargen/identity",
-    "test": "npm run test --workspace @clargen/identity",
-    "typecheck": "npm run typecheck --workspace @clargen/identity",
-    "fhir:build": "cd backend/identity/fhir && npx --yes fsh-sushi@3.21.0 .",
-    "fhir:clean": "rm -rf backend/identity/fhir/fsh-generated backend/identity/fhir/fsh-tank",
-    "provision:medplum": "npm run build --workspace @clargen/identity && node backend/identity/scripts/provision-medplum.mjs",
-    "configure:patient-access": "npm run build --workspace @clargen/identity && node backend/identity/scripts/configure-patient-access.mjs"
+    "dev": "node --watch backend/identity/src/server.js",
+    "start": "node backend/identity/src/server.js",
+    "test": "node --test backend/identity/test/*.test.js",
+    "test:watch": "node --test --watch backend/identity/test/*.test.js"
   },
   "engines": {
-    "node": "^22.18.0 || >=24.2.0"
+    "node": ">=22.18.0"
   }
 }
