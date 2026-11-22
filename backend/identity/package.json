@@ -2,7 +2,7 @@
   "name": "@clargen/identity",
   "version": "0.1.0",
   "private": true,
-  "description": "Clargen Health ID issuance and Patient profile services",
+  "description": "Clargen Health individual and organisation identity and participant query services",
   "type": "module",
   "scripts": {
     "build": "tsc -p tsconfig.json",
