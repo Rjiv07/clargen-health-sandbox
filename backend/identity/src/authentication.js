@@ -1,5 +1,5 @@
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
-import { ContactAlreadyRegisteredError, InvalidCredentialsError, ValidationError } from './errors.js';
+import { InvalidCredentialsError, ValidationError } from './errors.js';
 import { verifyPassword } from './password.js';
 import { isValidHealthId } from './health-id.js';
 
