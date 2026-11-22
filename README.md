@@ -46,6 +46,18 @@ npm start
 
 The API listens on \`http://127.0.0.1:8080\` by default. Override \`HOST\`, \`PORT\` or \`CLARGEN_DB_PATH\` with environment variables. By default, SQLite is created at \`./data/clargen.sqlite\`; the \`data/\` directory is ignored by Git.
 
+## Local demonstration UI
+
+A minimal browser interface is served by the same local Node.js server. It supports signup, signin, viewing the signed-in profile, changing directory visibility and searching discoverable identities. No frontend build step or third-party package is required.
+
+Start the server (use a different port if Jenkins is already using 8080):
+
+```bash
+PORT=8081 npm start
+```
+
+Open [http://127.0.0.1:8081/](http://127.0.0.1:8081/) in a browser. The UI uses the same-origin API. Access tokens stay in the current browser tab's memory and are not saved to local storage. Use synthetic test details only.
+
 ## API
 
 All request bodies must use \`Content-Type: application/json\`.

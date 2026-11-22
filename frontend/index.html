@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f4f7f6">
+  <title>Clargen Health ID — Local Demo</title>
+  <link rel="stylesheet" href="/styles.css">
+  <script src="/app.js" defer></script>
+</head>
+<body>
+  <header class="site-header">
+    <a class="brand" href="/" aria-label="Clargen Health ID home">
+      <span class="brand-mark">C</span>
+      <span>Clargen <strong>Health ID</strong></span>
+    </a>
+    <span class="environment-tag">LOCAL DEMO</span>
+  </header>
+
+  <main class="page">
+    <section class="intro">
+      <p class="eyebrow">IDENTITY SANDBOX</p>
+      <h1>A simple Health ID demonstration</h1>
+      <p>Create a local Clargen Health ID, sign in, view your profile and try the opt-in identity directory.</p>
+    </section>
+
+    <div id="notice" class="notice" role="status" aria-live="polite" hidden></div>
+
+    <section id="auth-view" class="panel">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">GET STARTED</p>
+          <h2 id="auth-title">Create a test account</h2>
+        </div>
+        <div class="tabs" role="tablist" aria-label="Account actions">
+          <button class="tab active" type="button" data-mode="signup" role="tab" aria-selected="true">Sign up</button>
+          <button class="tab" type="button" data-mode="signin" role="tab" aria-selected="false">Sign in</button>
+        </div>
+      </div>
+
+      <form id="signup-form" class="form">
+        <div class="two-column">
+          <label>Given name
+            <input name="givenName" autocomplete="given-name" maxlength="80" required>
+          </label>
+          <label>Family name
+            <input name="familyName" autocomplete="family-name" maxlength="80" required>
+          </label>
+        </div>
+        <label>Date of birth
+          <input name="dateOfBirth" type="date" required>
+        </label>
+        <label>Email address
+          <input name="email" type="email" autocomplete="email" required>
+        </label>
+        <label>Password <span class="hint">(at least 12 characters)</span>
+          <input name="password" type="password" autocomplete="new-password" minlength="12" maxlength="128" required>
+        </label>
+        <button class="primary-button" type="submit">Create Health ID</button>
+      </form>
+
+      <form id="signin-form" class="form" hidden>
+        <label>Email or mobile number
+          <input name="identifier" autocomplete="username" required>
+        </label>
+        <label>Password
+          <input name="password" type="password" autocomplete="current-password" required>
+        </label>
+        <button class="primary-button" type="submit">Sign in</button>
+      </form>
+      <p class="form-footnote">Use synthetic details only. This is a local demonstration, not a live health service.</p>
+    </section>
+
+    <section id="dashboard" hidden>
+      <div class="panel identity-card">
+        <div>
+          <p class="eyebrow">YOUR CLARGEN HEALTH ID</p>
+          <h2 id="health-id" class="health-id">—</h2>
+          <p id="profile-name" class="profile-name"></p>
+        </div>
+        <button id="signout-button" class="secondary-button" type="button">Sign out</button>
+      </div>
+
+      <div class="content-grid">
+        <section class="panel">
+          <p class="eyebrow">YOUR ACCOUNT</p>
+          <h2>Profile</h2>
+          <dl class="profile-details">
+            <div><dt>Date of birth</dt><dd id="profile-dob">—</dd></div>
+            <div><dt>Email</dt><dd id="profile-email">—</dd></div>
+            <div><dt>Mobile</dt><dd id="profile-mobile">—</dd></div>
+            <div><dt>Registered</dt><dd id="profile-created">—</dd></div>
+          </dl>
+          <div class="visibility-control">
+            <div>
+              <strong>Show me in the directory</strong>
+              <p>Other signed-in users can find your name and Health ID.</p>
+            </div>
+            <label class="switch">
+              <input id="discoverable-toggle" type="checkbox">
+              <span class="switch-track" aria-hidden="true"></span>
+              <span class="sr-only">Enable directory visibility</span>
+            </label>
+          </div>
+          <p class="small-note">Visibility is off by default. Search does not give other users access to your private profile.</p>
+        </section>
+
+        <section class="panel">
+          <p class="eyebrow">IDENTITY DIRECTORY</p>
+          <h2>Find an identity</h2>
+          <p class="section-copy">Search for people who have chosen to be discoverable.</p>
+          <form id="search-form" class="search-form">
+            <label for="search-query">Name or Clargen Health ID</label>
+            <div class="search-row">
+              <input id="search-query" name="q" minlength="2" maxlength="80" placeholder="Try a name or CLG ID" required>
+              <button class="primary-button" type="submit">Search</button>
+            </div>
+          </form>
+          <div id="search-results" class="search-results" aria-live="polite">
+            <p class="empty-state">Search results will appear here.</p>
+          </div>
+          <p class="small-note">Directory results contain only Health ID, given name and family name.</p>
+        </section>
+      </div>
+    </section>
+
+    <footer class="page-footer">
+      <span>Clargen Health ID · Local sandbox</span>
+      <span>Not an ABHA ID or an ABDM-integrated service</span>
+    </footer>
+  </main>
+</body>
+</html>

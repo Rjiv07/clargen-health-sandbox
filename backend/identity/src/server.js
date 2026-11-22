@@ -1,4 +1,5 @@
 import { createServer } from 'node:http';
+import { readFile } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
 import {
   authenticateAccessToken,
@@ -21,10 +22,23 @@ import { searchDiscoverableIndividuals, setIndividualDiscoverability } from './d
 
 const MAX_BODY_BYTES = 16 * 1024;
 
+const FRONTEND_ASSETS = new Map([
+  ['/', { file: new URL('../../../frontend/index.html', import.meta.url), type: 'text/html; charset=utf-8' }],
+  ['/app.js', { file: new URL('../../../frontend/app.js', import.meta.url), type: 'text/javascript; charset=utf-8' }],
+  ['/styles.css', { file: new URL('../../../frontend/styles.css', import.meta.url), type: 'text/css; charset=utf-8' }],
+]);
+
 export function createIdentityServer({ database = openDatabase() } = {}) {
   const server = createServer(async (request, response) => {
     try {
       const url = new URL(request.url ?? '/', 'http://127.0.0.1');
+
+      const frontendAsset = request.method === 'GET' ? FRONTEND_ASSETS.get(url.pathname) : undefined;
+      if (frontendAsset) {
+        const content = await readFile(frontendAsset.file);
+        sendAsset(response, frontendAsset.type, content);
+        return;
+      }
 
       if (request.method === 'GET' && url.pathname === '/health') {
         sendJson(response, 200, { status: 'ok', service: 'clargen-health-id' });
@@ -162,6 +176,17 @@ function readBearerToken(header) {
   if (typeof header !== 'string') return undefined;
   const match = header.match(/^Bearer\s+([A-Za-z0-9_-]{43})$/i);
   return match?.[1];
+}
+
+function sendAsset(response, contentType, content) {
+  response.writeHead(200, {
+    'Content-Type': contentType,
+    'Content-Length': content.length,
+    'Cache-Control': 'no-store',
+    'X-Content-Type-Options': 'nosniff',
+    'Referrer-Policy': 'no-referrer',
+  });
+  response.end(content);
 }
 
 function sendJson(response, statusCode, value) {
