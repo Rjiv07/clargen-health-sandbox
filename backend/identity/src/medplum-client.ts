@@ -1,9 +1,11 @@
-
 import type { MedplumClient, WithId } from '@medplum/core';
 import type { Bundle, Patient } from '@medplum/fhirtypes';
 import type { IdentityFhirClient } from './types';
 
-/** Adapter for a server-held MedplumClient. Do not export its credentials to a client application. */
+/**
+ * Adapter for a server-held MedplumClient.
+ * Never expose its credentials to a client application.
+ */
 export class MedplumIdentityFhirClient implements IdentityFhirClient {
   private readonly medplum: MedplumClient;
 
@@ -27,10 +29,10 @@ export class MedplumIdentityFhirClient implements IdentityFhirClient {
   }
 
   updatePatient(patient: Patient, expectedVersionId: string): Promise<WithId<Patient>> {
-  return this.medplum.updateResource(patient, {
-    headers: {
-      'If-Match': `W/"${expectedVersionId}"`,
-    },
-  });
-}
+    return this.medplum.updateResource(patient, {
+      headers: {
+        'If-Match': `W/"${expectedVersionId}"`,
+      },
+    });
   }
+}
