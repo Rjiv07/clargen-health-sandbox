@@ -9,7 +9,9 @@
   "scripts": {
     "build": "npm run build --workspace @clargen/identity",
     "test": "npm run test --workspace @clargen/identity",
-    "typecheck": "npm run typecheck --workspace @clargen/identity"
+    "typecheck": "npm run typecheck --workspace @clargen/identity",
+    "fhir:build": "cd backend/identity/fhir && npx --yes fsh-sushi@3.21.0 .",
+    "fhir:clean": "rm -rf backend/identity/fhir/fsh-generated backend/identity/fhir/fsh-tank"
   },
   "engines": {
     "node": "^22.18.0 || >=24.2.0"

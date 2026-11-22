@@ -1,0 +1,9 @@
+id: clargen-health
+canonical: https://clargen.health/fhir
+name: ClargenHealth
+title: Clargen Health
+status: draft
+version: 0.1.0
+copyrightYear: 2026
+releaseLabel: CI Build
+fhirVersion: 4.0.1

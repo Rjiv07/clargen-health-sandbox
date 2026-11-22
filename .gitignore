@@ -7,6 +7,8 @@ dist/
 **/dist/
 coverage/
 *.tsbuildinfo
+backend/identity/fhir/fsh-generated/
+backend/identity/fhir/fsh-tank/
 
 # Environment and secrets
 .env
