@@ -1,6 +1,20 @@
 import { createServer } from 'node:http';
 import { pathToFileURL } from 'node:url';
-import { ContactAlreadyRegisteredError, ValidationError, HealthIdIssuanceError } from './errors.js';
+import {
+  authenticateAccessToken,
+  getIndividualProfileByHealthId,
+  getOwnIndividualProfile,
+  revokeAccessToken,
+  signIn,
+} from './authentication.js';
+import {
+  AuthenticationRequiredError,
+  ContactAlreadyRegisteredError,
+  InvalidCredentialsError,
+  UnsupportedMediaTypeError,
+  ValidationError,
+  HealthIdIssuanceError,
+} from './errors.js';
 import { openDatabase } from './database.js';
 import { registerIndividual } from './registration.js';
 
@@ -10,19 +24,65 @@ export function createIdentityServer({ database = openDatabase() } = {}) {
   const server = createServer(async (request, response) => {
     try {
       const url = new URL(request.url ?? '/', 'http://127.0.0.1');
+
       if (request.method === 'GET' && url.pathname === '/health') {
         sendJson(response, 200, { status: 'ok', service: 'clargen-health-id' });
         return;
       }
 
       if (request.method === 'POST' && url.pathname === '/api/v1/signup') {
-        if (!request.headers['content-type']?.toLowerCase().includes('application/json')) {
-          sendJson(response, 415, { error: 'UNSUPPORTED_MEDIA_TYPE', message: 'Send signup details as application/json' });
-          return;
-        }
-        const body = await readJson(request);
+        const body = await readJsonRequest(request);
         const result = await registerIndividual(database, body);
         sendJson(response, 201, result);
+        return;
+      }
+
+      if (request.method === 'POST' && url.pathname === '/api/v1/signin') {
+        const body = await readJsonRequest(request);
+        const result = await signIn(database, body);
+        sendJson(response, 200, result);
+        return;
+      }
+
+      const isMeRoute = request.method === 'GET' && url.pathname === '/api/v1/me';
+      const healthIdMatch = request.method === 'GET'
+        ? url.pathname.match(/^\/api\/v1\/individuals\/health-id\/([^/]+)$/)
+        : null;
+      const isSignoutRoute = request.method === 'POST' && url.pathname === '/api/v1/signout';
+
+      if (isMeRoute || healthIdMatch || isSignoutRoute) {
+        const token = readBearerToken(request.headers.authorization);
+        const session = token ? authenticateAccessToken(database, token) : undefined;
+        if (!session) throw new AuthenticationRequiredError();
+
+        if (isSignoutRoute) {
+          revokeAccessToken(database, token);
+          sendEmpty(response, 204);
+          return;
+        }
+
+        let requestedHealthId;
+        if (healthIdMatch) {
+          try {
+            requestedHealthId = decodeURIComponent(healthIdMatch[1]);
+          } catch {
+            sendJson(response, 404, { error: 'PROFILE_NOT_FOUND', message: 'No profile is available for this Health ID' });
+            return;
+          }
+        }
+
+        const profile = isMeRoute
+          ? getOwnIndividualProfile(database, session.accountId)
+          : getIndividualProfileByHealthId(database, session.accountId, requestedHealthId);
+
+        if (!profile) {
+          sendJson(response, 404, {
+            error: 'PROFILE_NOT_FOUND',
+            message: 'No profile is available for this Health ID',
+          });
+          return;
+        }
+        sendJson(response, 200, { individual: profile });
         return;
       }
 
@@ -30,8 +90,14 @@ export function createIdentityServer({ database = openDatabase() } = {}) {
     } catch (error) {
       if (error instanceof ValidationError) {
         sendJson(response, 400, { error: 'VALIDATION_ERROR', message: error.message, issues: error.issues });
+      } else if (error instanceof UnsupportedMediaTypeError) {
+        sendJson(response, 415, { error: 'UNSUPPORTED_MEDIA_TYPE', message: error.message });
       } else if (error instanceof ContactAlreadyRegisteredError) {
         sendJson(response, 409, { error: 'CONTACT_ALREADY_REGISTERED', message: error.message });
+      } else if (error instanceof InvalidCredentialsError) {
+        sendJson(response, 401, { error: 'INVALID_CREDENTIALS', message: error.message });
+      } else if (error instanceof AuthenticationRequiredError) {
+        sendJson(response, 401, { error: 'UNAUTHENTICATED', message: error.message });
       } else if (error instanceof HealthIdIssuanceError) {
         sendJson(response, 503, { error: 'HEALTH_ID_ISSUANCE_FAILED', message: error.message });
       } else if (error instanceof SyntaxError) {
@@ -51,7 +117,10 @@ export function createIdentityServer({ database = openDatabase() } = {}) {
   return server;
 }
 
-async function readJson(request) {
+async function readJsonRequest(request) {
+  if (!request.headers['content-type']?.toLowerCase().includes('application/json')) {
+    throw new UnsupportedMediaTypeError();
+  }
   const chunks = [];
   let size = 0;
   for await (const chunk of request) {
@@ -68,6 +137,12 @@ async function readJson(request) {
   return body;
 }
 
+function readBearerToken(header) {
+  if (typeof header !== 'string') return undefined;
+  const match = header.match(/^Bearer\s+([A-Za-z0-9_-]{43})$/i);
+  return match?.[1];
+}
+
 function sendJson(response, statusCode, value) {
   if (response.headersSent) return;
   const payload = JSON.stringify(value);
@@ -79,6 +154,14 @@ function sendJson(response, statusCode, value) {
     'Referrer-Policy': 'no-referrer',
   });
   response.end(payload);
+}
+
+function sendEmpty(response, statusCode) {
+  response.writeHead(statusCode, {
+    'Cache-Control': 'no-store',
+    'X-Content-Type-Options': 'nosniff',
+  });
+  response.end();
 }
 
 async function main() {
