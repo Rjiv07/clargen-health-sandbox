@@ -19,30 +19,40 @@ npm run fhir:build
 The generated StructureDefinition is:
 `backend/identity/fhir/fsh-generated/resources/StructureDefinition-clargen-patient.json`
 
-Install this generated JSON resource into the intended Medplum development
-project. Do not upload the FSH source file. Its canonical URL is
+Its canonical URL is
 `https://clargen.health/fhir/StructureDefinition/clargen-patient`.
 
-## Medplum project configuration
+## Provision the Medplum project
 
-Use a project administrator in the **Clargen Health Development** project.
+The package exports `provisionIdentityResources(adminClient, patientProfile)`.
+Call it from a trusted deployment script with:
 
-1. Create the `Clargen Identity Issuer` AccessPolicy using
-   `createIdentityIssuerAccessPolicy()`. It must grant only Patient
-   `create`, `search` and `read`.
-2. Create a dedicated `ClientApplication` named `Clargen Identity Issuer`.
-3. Attach the issuer AccessPolicy to the ClientApplication's
+- a MedplumClient authenticated as a project administrator for the
+  **Clargen Health Development** project; and
+- the generated StructureDefinition JSON parsed as a FHIR resource.
+
+The function idempotently creates or updates the StructureDefinition and both
+Sprint 1 AccessPolicies. It stops if duplicate canonical URLs or policy names
+are found. Do not use the restricted issuer client for provisioning.
+
+The issuer policy grants only Patient `create`, `search` and `read`.
+The identifier immutability policy is a separate policy and must be composed
+with the normal patient-compartment policy on each Patient membership.
+
+## Create the issuer ClientApplication
+
+Create the dedicated application in the Medplum App as a project administrator:
+
+1. Open **Client Applications** in the Clargen Health Development project.
+2. Create a dedicated application named `Clargen Identity Issuer`.
+3. Attach the `Clargen Identity Issuer` AccessPolicy to its
    `ProjectMembership`.
 4. Store the ClientApplication ID and secret in the trusted backend's local
    secret store. Never commit them or expose them to a browser.
-5. Create the `Clargen Patient Identifier Immutability` AccessPolicy using
-   `createPatientIdentifierImmutabilityPolicy()`.
-6. Add the immutability policy to each Patient membership alongside the
-   standard patient-compartment policy. Do not replace the compartment policy.
 
-The issuer credential is not allowed to update or delete Patient resources.
-Profile updates must use a Medplum client authenticated as the requesting
-patient/user so the caller's own AccessPolicy is enforced.
+The credential must not have Patient update or delete authority. The
+`connectIdentityIssuer()` factory creates a server-side Medplum client from
+the base URL, client ID and secret.
 
 ## Identity model
 
@@ -54,6 +64,8 @@ patient/user so the caller's own AccessPolicy is enforced.
   outside Sprint 1.
 - `MedplumPatientIdentityLookup` requires a caller-scoped client. It does not
   bypass Medplum access control.
+- Profile updates must use a client scoped to the authenticated caller, not
+  the privileged issuer credential.
 
 ## Local commands
 
