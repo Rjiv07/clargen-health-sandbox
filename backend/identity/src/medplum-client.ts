@@ -152,18 +152,21 @@ export async function configurePatientMembershipAccess(
     );
   }
 
+  const immutabilityPolicies = await adminClient.searchResources(
+    'AccessPolicy',
+    `name=${encodeURIComponent('Clargen Patient Identifier Immutability')}`
+  );
+  if (immutabilityPolicies.length !== 1) {
+    throw new Error(
+      `Expected exactly one Clargen Patient Identifier Immutability policy; found ${immutabilityPolicies.length}. Run npm run provision:medplum first.`
+    );
+  }
+
   const composedName = `Clargen Patient Access Policy - ${projectId}`;
   const composedPolicy: AccessPolicy = {
     resourceType: 'AccessPolicy',
     name: composedName,
-    basedOn: [basePolicy],
-    resource: [
-      {
-        resourceType: 'Patient',
-        criteria: 'Patient?_id=%patient.id',
-        readonlyFields: ['identifier'],
-      },
-    ],
+    basedOn: [basePolicy, createReference(immutabilityPolicies[0])],
   };
   const installedPolicy = await upsertAccessPolicy(adminClient, composedPolicy);
 
